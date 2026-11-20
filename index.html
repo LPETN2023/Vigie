@@ -156,7 +156,7 @@
 
   /* Visuels : image ou illustration de remplacement */
   .media { position: relative; overflow: hidden; background: var(--surface-2); }
-  .media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .media img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; display: block; }
   .illus {
     position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.92);
     font-weight: 700; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; text-align: center; padding: 8px;
@@ -469,9 +469,18 @@ async function charger() {
   etat.votes = votes;
 
   afficherMaj(exe.data?.[0], arts.data.length >= LIMITE, derniere);
+  dernierChargement = Date.now();
   rendreAccueil();
   if (etat.vue === "journal") ouvrirJournal(0, false);
 }
+
+// Retour sur l'application (onglet ou appli restés ouverts) : on recharge si les données ont plus de 10 min
+let dernierChargement = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !sessionCourante) return;
+  if (etat.vue !== "accueil" || etat.ouvert || etat.feuille) return;
+  if (Date.now() - dernierChargement > 10 * 60e3) charger();
+});
 
 function afficherMaj(exe, tronque, derniere) {
   let txt = tronque ? `Seuls les ${LIMITE} articles les mieux classés sont affichés. ` : "";
