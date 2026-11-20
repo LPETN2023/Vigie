@@ -121,6 +121,16 @@
     max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
+  .revue { background: var(--surface); border-radius: 14px; box-shadow: var(--ombre); padding: 12px 16px; margin-bottom: 22px; }
+  .revue summary { cursor: pointer; font-weight: 600; font-size: .92rem; list-style: none; display: flex; gap: 8px; align-items: center; }
+  .revue summary::-webkit-details-marker { display: none; }
+  .revue summary::after { content: "›"; margin-left: auto; color: var(--doux); transition: transform .2s; }
+  .revue[open] summary::after { transform: rotate(90deg); }
+  .revue .resume-revue { color: var(--doux); font-size: .88rem; margin: 6px 0 0; line-height: 1.45; }
+  .revue ul { margin: 10px 0 2px; padding: 0; list-style: none; }
+  .revue li { padding: 8px 0; border-top: 1px solid var(--filet); font-size: .88rem; line-height: 1.4; }
+  .revue .type { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-right: 6px; }
+
   .filtres { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 14px; scrollbar-width: none; }
   .filtres::-webkit-scrollbar { display: none; }
   /* Souris (PC) : pas de défilement horizontal au doigt, les catégories passent à la ligne */
@@ -295,6 +305,7 @@
 
   <main id="accueil">
     <section class="essentiel cache" id="essentiel"></section>
+    <details class="revue cache" id="revue"></details>
     <div class="titre-section"><h2 id="titre-liste">Articles</h2><span id="maj"></span></div>
     <div class="filtres" id="filtres" role="group" aria-label="Thèmes"></div>
     <div class="grille" id="grille"><div class="chargement">Chargement…</div></div>
@@ -449,11 +460,12 @@ async function charger() {
     const d = new Date(); d.setDate(d.getDate() - 6);
     requete = requete.gte("edition", d.toISOString().slice(0, 10));
   }
-  const [arts, exe, syn] = await Promise.all([
+  const [arts, exe, syn, rev] = await Promise.all([
     requete.order("edition", { ascending: false }).order("a_la_une", { ascending: false })
       .order("score", { ascending: false }).limit(LIMITE),
     sb.from("executions").select("debut,fin,statut").order("debut", { ascending: false }).limit(1),
-    derniere ? sb.from("syntheses").select("edition,points").eq("edition", derniere).maybeSingle() : Promise.resolve({ data: null })
+    derniere ? sb.from("syntheses").select("edition,points").eq("edition", derniere).maybeSingle() : Promise.resolve({ data: null }),
+    sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle()
   ]);
   if (moi !== numeroRequete) return;
   if (arts.error) { $("grille").innerHTML = `<div class="chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
@@ -468,6 +480,7 @@ async function charger() {
   if (moi !== numeroRequete) return;
   etat.articles = arts.data;
   etat.synthese = syn.data;
+  etat.revue = rev.data ?? null;
   etat.votes = votes;
 
   afficherMaj(exe.data?.[0], arts.data.length >= LIMITE, derniere);
@@ -519,6 +532,16 @@ function rendreAccueil() {
       }).join("");
     ess.classList.remove("cache");
   } else ess.classList.add("cache");
+
+  // Dernière révision des sources (affichée 15 jours)
+  const r = etat.revue, bloc = $("revue");
+  if (r && Date.now() - new Date(r.cree_le).getTime() < 15 * 864e5) {
+    const ch = Array.isArray(r.changements) ? r.changements : [];
+    bloc.innerHTML = `<summary>🔧 Sources revues le ${echapper(new Date(r.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }))}${ch.length ? ` · ${ch.length} changement${ch.length > 1 ? "s" : ""}` : ""}</summary>
+      <p class="resume-revue">${echapper(r.resume)}</p>` +
+      (ch.length ? `<ul>${ch.map((c) => `<li><span class="type">${echapper(c?.type)}</span><strong>${echapper(c?.source)}</strong> — ${echapper(c?.raison)}</li>`).join("")}</ul>` : "");
+    bloc.classList.remove("cache");
+  } else bloc.classList.add("cache");
 
   // Filtres par thème
   const compte = new Map();
