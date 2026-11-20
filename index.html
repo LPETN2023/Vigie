@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Le Journal</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root {
+    --papier: #f6f1e7; --carte: #fffdf8; --encre: #1d1b16; --gris: #6b655a;
+    --filet: #ddd4c3; --accent: #9b2c1f; --accent-doux: #f3e0dc;
+    --ok: #2f6b3a; --ok-doux: #dcebdc; --non: #9b2c1f;
+    --ombre: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.06);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --papier: #16140f; --carte: #211e18; --encre: #ece6da; --gris: #a39b8c;
+      --filet: #3a352c; --accent: #e07a62; --accent-doux: #3b231d;
+      --ok: #7fc08a; --ok-doux: #1f3322; --non: #e07a62;
+      --ombre: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--papier); color: var(--encre); font-family: var(--sans);
+    -webkit-tap-highlight-color: transparent; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .cache { display: none !important; }
+
+  /* Connexion */
+  #connexion { height: 100%; display: grid; place-items: center; padding: 16px; }
+  #connexion form {
+    width: 100%; max-width: 360px; background: var(--carte); padding: 28px 24px;
+    border: 1px solid var(--filet); border-radius: 14px; box-shadow: var(--ombre);
+  }
+  #connexion h1 { font-family: var(--serif); font-size: 2rem; margin: 0 0 4px; text-align: center; }
+  #connexion p.sous { margin: 0 0 22px; text-align: center; color: var(--gris); font-size: .9rem; }
+  label { display: block; font-size: .85rem; color: var(--gris); margin: 12px 0 4px; }
+  input, textarea {
+    width: 100%; padding: 11px 12px; font: inherit; font-size: 16px; color: var(--encre);
+    background: var(--papier); border: 1px solid var(--filet); border-radius: 8px;
+  }
+  .bouton {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 11px 16px; border-radius: 10px; border: 1px solid var(--filet);
+    background: var(--carte); text-decoration: none; color: var(--encre); font-weight: 600;
+  }
+  .bouton.plein { background: var(--encre); color: var(--papier); border-color: var(--encre); }
+  #connexion .bouton.plein { width: 100%; margin-top: 20px; }
+  .lien { background: none; border: 0; color: var(--gris); text-decoration: underline; font-size: .85rem; padding: 8px 0; }
+  .msg { min-height: 1.2em; font-size: .85rem; color: var(--accent); margin-top: 10px; text-align: center; }
+
+  /* Journal */
+  #journal { height: 100%; display: flex; flex-direction: column; }
+  header {
+    padding: calc(env(safe-area-inset-top) + 10px) 16px 8px; border-bottom: 3px double var(--filet);
+  }
+  .ligne1 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .titre-journal { font-family: var(--serif); font-size: 1.6rem; font-weight: 700; letter-spacing: .01em; }
+  .compteur { font-variant-numeric: tabular-nums; color: var(--gris); font-size: .9rem; }
+  .ligne2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+  .maj { font-size: .78rem; color: var(--gris); }
+  .filtres { display: flex; gap: 4px; }
+  .filtres button {
+    border: 1px solid var(--filet); background: transparent; border-radius: 999px;
+    padding: 4px 10px; font-size: .78rem; color: var(--gris);
+  }
+  .filtres button[aria-pressed="true"] { background: var(--encre); color: var(--papier); border-color: var(--encre); }
+  .alerte {
+    margin: 8px 16px 0; padding: 8px 12px; border-radius: 8px; font-size: .82rem;
+    background: var(--accent-doux); color: var(--accent);
+  }
+  .barre { height: 2px; background: var(--filet); margin: 0; }
+  .barre > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+  #pages {
+    flex: 1; display: flex; overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  #pages::-webkit-scrollbar { display: none; }
+  .page {
+    flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always;
+    overflow-y: auto; padding: 16px 16px calc(env(safe-area-inset-bottom) + 96px);
+  }
+  article {
+    max-width: 640px; margin: 0 auto; background: var(--carte); border: 1px solid var(--filet);
+    border-radius: 14px; padding: 22px 20px; box-shadow: var(--ombre);
+  }
+  .rubrique {
+    display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700;
+  }
+  .une { background: var(--accent); color: var(--carte); padding: 2px 7px; border-radius: 4px; }
+  article h2 { font-family: var(--serif); font-size: 1.55rem; line-height: 1.22; margin: 12px 0 10px; }
+  .meta { font-size: .82rem; color: var(--gris); border-bottom: 1px solid var(--filet); padding-bottom: 12px; }
+  .resume { font-family: var(--serif); font-size: 1.12rem; line-height: 1.55; margin: 14px 0 18px; }
+  .original { font-size: .82rem; color: var(--gris); font-style: italic; margin: -6px 0 16px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions .bouton { flex: 1 1 140px; }
+  .votes { display: flex; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--filet); align-items: center; }
+  .votes .etiq { font-size: .82rem; color: var(--gris); flex: 1; }
+  .vote {
+    width: 52px; height: 44px; border-radius: 10px; border: 1px solid var(--filet);
+    background: transparent; font-size: 1.25rem;
+  }
+  .vote[data-actif="1"].plus { background: var(--ok-doux); border-color: var(--ok); }
+  .vote[data-actif="1"].moins { background: var(--accent-doux); border-color: var(--non); }
+  .fin { text-align: center; padding-top: 18vh; color: var(--gris); }
+  .fin h2 { font-family: var(--serif); color: var(--encre); font-size: 1.6rem; }
+
+  .nav {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom) + 16px); left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px;
+  }
+  .nav button {
+    width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--filet);
+    background: var(--carte); box-shadow: var(--ombre); font-size: 1.3rem;
+  }
+  @media (hover: none) { .nav { display: none; } }
+
+  /* Feuille de vote */
+  #voile { position: fixed; inset: 0; background: rgba(0,0,0,.35); }
+  #feuille {
+    position: fixed; left: 0; right: 0; bottom: 0; max-height: 85vh; overflow-y: auto;
+    background: var(--carte); border-radius: 16px 16px 0 0; padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px);
+    max-width: 640px; margin: 0 auto; box-shadow: 0 -8px 30px rgba(0,0,0,.2);
+  }
+  #feuille h3 { margin: 0 0 4px; font-family: var(--serif); font-size: 1.25rem; }
+  #feuille p { margin: 0 0 14px; color: var(--gris); font-size: .88rem; }
+  .puces { display: flex; flex-wrap: wrap; gap: 8px; }
+  .puces button {
+    border: 1px solid var(--filet); background: transparent; border-radius: 999px; padding: 8px 12px; font-size: .9rem;
+  }
+  .puces button[aria-pressed="true"] { background: var(--encre); color: var(--papier); border-color: var(--encre); }
+  #feuille .pied { display: flex; gap: 8px; margin-top: 16px; }
+  #feuille .pied .bouton { flex: 1; }
+  .chargement { display: grid; place-items: center; height: 100%; color: var(--gris); }
+</style>
+</head>
+<body>
+
+<section id="connexion" class="cache">
+  <form id="form-connexion" autocomplete="on">
+    <h1>Le Journal</h1>
+    <p class="sous">Veille cyber et judiciaire</p>
+    <label for="email">Adresse e-mail</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="mdp">Mot de passe</label>
+    <input id="mdp" type="password" autocomplete="current-password" required minlength="10">
+    <button class="bouton plein" type="submit" id="btn-connexion">Se connecter</button>
+    <div style="text-align:center"><button type="button" class="lien" id="btn-inscription">Première fois ? Créer mon compte</button></div>
+    <div class="msg" id="msg-connexion" role="alert"></div>
+  </form>
+</section>
+
+<section id="attente" class="cache chargement">
+  <div style="max-width:340px;text-align:center;padding:16px">
+    <p>Votre compte existe, mais il n'est pas encore autorisé à lire le journal.</p>
+    <button class="lien" id="btn-deco-attente">Se déconnecter</button>
+  </div>
+</section>
+
+<section id="journal" class="cache">
+  <header>
+    <div class="ligne1">
+      <div class="titre-journal">Le Journal</div>
+      <div class="compteur" id="compteur"></div>
+    </div>
+    <div class="ligne2">
+      <div class="maj" id="maj"></div>
+      <div class="filtres" role="group" aria-label="Période">
+        <button data-jours="1" aria-pressed="true">Du jour</button>
+        <button data-jours="7" aria-pressed="false">7 jours</button>
+        <button id="btn-deco" aria-label="Se déconnecter" title="Se déconnecter">⎋</button>
+      </div>
+    </div>
+  </header>
+  <div class="alerte cache" id="alerte"></div>
+  <div class="barre"><div id="progression"></div></div>
+  <main id="pages" tabindex="0" aria-label="Articles"></main>
+  <div class="nav">
+    <button id="prec" aria-label="Article précédent">‹</button>
+    <button id="suiv" aria-label="Article suivant">›</button>
+  </div>
+</section>
+
+<div id="voile" class="cache"></div>
+<div id="feuille" class="cache" role="dialog" aria-modal="true" aria-labelledby="feuille-titre">
+  <h3 id="feuille-titre"></h3>
+  <p>Pourquoi ? Vos réponses servent à affiner les sources et le tri.</p>
+  <div class="puces" id="raisons"></div>
+  <label for="commentaire">Un mot de plus (facultatif)</label>
+  <textarea id="commentaire" rows="2" maxlength="500"></textarea>
+  <div class="pied">
+    <button class="bouton" id="btn-retirer">Retirer mon avis</button>
+    <button class="bouton plein" id="btn-enregistrer">Enregistrer</button>
+  </div>
+</div>
+
+<div id="demarrage" class="chargement">Chargement…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://wdngyuonaseyvlgiwznu.supabase.co";
+const SUPABASE_CLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkbmd5dW9uYXNleXZsZ2l3em51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMzkwMDEsImV4cCI6MjExMDcxNTAwMX0.JB38j-yZ1IFhYYB1D9VPRz4B5mlAJAgDJ3jCMqEnOgk";
+
+const RAISONS = {
+  "1": ["Sujet prioritaire pour moi", "Utile pour le travail", "Bien expliqué", "Information exclusive", "Source fiable"],
+  "-1": ["Hors sujet", "Déjà vu / doublon", "Trop technique", "Trop superficiel", "Source peu fiable", "Pas d'intérêt pour la France"]
+};
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
+const $ = (id) => document.getElementById(id);
+const etat = { articles: [], votes: new Map(), jours: 1, index: 0, feuille: null };
+
+function memoire(cle, valeur) {
+  try {
+    if (valeur === undefined) return localStorage.getItem(cle);
+    localStorage.setItem(cle, valeur);
+  } catch (e) { return null; }
+}
+
+function afficher(vue) {
+  for (const id of ["demarrage", "connexion", "attente", "journal"]) $(id).classList.toggle("cache", id !== vue);
+}
+
+function echapper(t) {
+  return String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function urlSure(u) {
+  try { const x = new URL(u); return (x.protocol === "https:" || x.protocol === "http:") ? x.href : "#"; }
+  catch (e) { return "#"; }
+}
+
+function dateCourte(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) + " · " +
+         d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ---------- Connexion ---------- */
+let inscription = false;
+$("btn-inscription").onclick = () => {
+  inscription = !inscription;
+  $("btn-connexion").textContent = inscription ? "Créer mon compte" : "Se connecter";
+  $("btn-inscription").textContent = inscription ? "J'ai déjà un compte" : "Première fois ? Créer mon compte";
+  $("mdp").autocomplete = inscription ? "new-password" : "current-password";
+  $("msg-connexion").textContent = "";
+};
+
+$("form-connexion").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $("email").value.trim(), password = $("mdp").value;
+  $("msg-connexion").textContent = "";
+  $("btn-connexion").disabled = true;
+  try {
+    const { error } = inscription
+      ? await sb.auth.signUp({ email, password })
+      : await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    if (inscription) $("msg-connexion").textContent = "Compte créé. Confirmez-le via l'e-mail reçu, puis connectez-vous.";
+  } catch (err) {
+    $("msg-connexion").textContent = /Invalid login/i.test(err.message) ? "E-mail ou mot de passe incorrect." : err.message;
+  } finally {
+    $("btn-connexion").disabled = false;
+  }
+};
+
+$("btn-deco").onclick = $("btn-deco-attente").onclick = () => sb.auth.signOut();
+
+sb.auth.onAuthStateChange((evenement, session) => {
+  // Différé : les appels Supabase dans ce rappel peuvent bloquer la bibliothèque
+  setTimeout(() => demarrer(session), 0);
+});
+
+let sessionCourante = null;
+async function demarrer(session) {
+  const uid = session?.user?.id ?? null;
+  if (uid === sessionCourante && uid !== null) return;
+  sessionCourante = uid;
+  if (!session) { afficher("connexion"); return; }
+  afficher("demarrage");
+  const { data, error } = await sb.rpc("est_lecteur");
+  if (error || !data) { afficher("attente"); return; }
+  afficher("journal");
+  await charger();
+}
+
+/* ---------- Données ---------- */
+async function charger() {
+  $("pages").innerHTML = '<div class="page chargement">Chargement…</div>';
+  const depuis = new Date();
+  depuis.setDate(depuis.getDate() - (etat.jours - 1));
+  const dateMin = depuis.toISOString().slice(0, 10);
+
+  const [arts, exe] = await Promise.all([
+    sb.from("articles")
+      .select("id,url,source,langue,titre,titre_original,resume,theme,score,a_la_une,publie_le,edition")
+      .gte("edition", dateMin)
+      .order("edition", { ascending: false }).order("a_la_une", { ascending: false }).order("score", { ascending: false })
+      .limit(200),
+    sb.from("executions").select("debut,fin,statut,message").order("debut", { ascending: false }).limit(1)
+  ]);
+  if (arts.error) { $("pages").innerHTML = `<div class="page chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
+
+  // Si l'édition du jour n'est pas encore là, montrer la plus récente
+  let liste = arts.data;
+  if (etat.jours === 1 && liste.length === 0) {
+    const r = await sb.from("articles").select("edition").order("edition", { ascending: false }).limit(1);
+    if (r.data?.length) {
+      const r2 = await sb.from("articles")
+        .select("id,url,source,langue,titre,titre_original,resume,theme,score,a_la_une,publie_le,edition")
+        .eq("edition", r.data[0].edition)
+        .order("a_la_une", { ascending: false }).order("score", { ascending: false });
+      liste = r2.data ?? [];
+    }
+  }
+  etat.articles = liste;
+
+  etat.votes.clear();
+  const ids = liste.map((a) => a.id);
+  if (ids.length) {
+    const v = await sb.from("votes").select("article_id,avis,raisons,commentaire").in("article_id", ids);
+    for (const x of v.data ?? []) etat.votes.set(x.article_id, x);
+  }
+
+  afficherMaj(exe.data?.[0]);
+  rendre();
+}
+
+function afficherMaj(exe) {
+  const alerte = $("alerte");
+  if (!exe) { $("maj").textContent = "Pas encore de mise à jour"; alerte.classList.add("cache"); return; }
+  $("maj").textContent = "Mis à jour le " + dateCourte(exe.fin || exe.debut);
+  const ageH = (Date.now() - new Date(exe.debut).getTime()) / 36e5;
+  let txt = "";
+  if (exe.statut === "echec") txt = "⚠ La dernière mise à jour a échoué. Les articles affichés peuvent dater.";
+  else if (ageH > 30) txt = "⚠ Aucune mise à jour depuis plus d'un jour.";
+  alerte.textContent = txt;
+  alerte.classList.toggle("cache", !txt);
+}
+
+/* ---------- Rendu ---------- */
+function carte(a, i, total) {
+  const v = etat.votes.get(a.id);
+  const etranger = a.langue && a.langue !== "fr";
+  const traduire = "https://translate.google.com/translate?sl=auto&tl=fr&u=" + encodeURIComponent(a.url);
+  return `
+  <section class="page" data-i="${i}">
+    <article>
+      <div class="rubrique">
+        ${a.a_la_une ? '<span class="une">À la une</span>' : ""}
+        <span>${echapper(a.theme || "Actualité")}</span>
+      </div>
+      <h2>${echapper(a.titre)}</h2>
+      <div class="meta">${echapper(a.source)}${a.publie_le ? " · " + dateCourte(a.publie_le) : ""}${etranger ? " · traduit de l'" + (a.langue === "en" ? "anglais" : a.langue) : ""}</div>
+      <p class="resume">${echapper(a.resume)}</p>
+      ${etranger ? `<p class="original">Titre original : ${echapper(a.titre_original)}</p>` : ""}
+      <div class="actions">
+        <a class="bouton plein" href="${urlSure(a.url)}" target="_blank" rel="noopener noreferrer">Lire l'article ↗</a>
+        ${etranger ? `<a class="bouton" href="${traduire}" target="_blank" rel="noopener noreferrer">Lire traduit ↗</a>` : ""}
+      </div>
+      <div class="votes">
+        <span class="etiq">${v ? (v.avis > 0 ? "Vous avez aimé" : "Vous n'avez pas aimé") : "Votre avis ?"}</span>
+        <button class="vote plus" data-id="${a.id}" data-avis="1" data-actif="${v?.avis === 1 ? 1 : 0}" aria-label="J'aime">👍</button>
+        <button class="vote moins" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}" aria-label="Je n'aime pas">👎</button>
+      </div>
+    </article>
+  </section>`;
+}
+
+function rendre() {
+  const n = etat.articles.length;
+  const fin = `<section class="page"><div class="fin"><h2>${n ? "Vous avez tout lu" : "Rien de neuf"}</h2>
+    <p>${n ? n + " article" + (n > 1 ? "s" : "") + " dans cette édition." : "Aucun article pour cette période."}</p>
+    ${etat.jours === 1 ? '<button class="bouton" id="voir7">Voir les 7 derniers jours</button>' : ""}</div></section>`;
+  $("pages").innerHTML = etat.articles.map((a, i) => carte(a, i, n)).join("") + fin;
+  const b = $("voir7"); if (b) b.onclick = () => choisirPeriode(7);
+
+  const cle = "pos:" + etat.jours + ":" + (etat.articles[0]?.edition || "");
+  const pos = Math.min(parseInt(memoire(cle) || "0", 10) || 0, n);
+  etat.index = pos;
+  requestAnimationFrame(() => { $("pages").scrollLeft = pos * $("pages").clientWidth; majCompteur(); });
+}
+
+function majCompteur() {
+  const n = etat.articles.length;
+  const i = Math.min(etat.index, n);
+  $("compteur").textContent = n ? `${Math.min(i + 1, n)} / ${n}` : "";
+  $("progression").style.width = n ? ((Math.min(i + 1, n)) / n * 100) + "%" : "0";
+}
+
+let minuterie;
+$("pages").addEventListener("scroll", () => {
+  const p = $("pages");
+  const i = Math.round(p.scrollLeft / p.clientWidth);
+  if (i !== etat.index) {
+    etat.index = i; majCompteur();
+    clearTimeout(minuterie);
+    minuterie = setTimeout(() => memoire("pos:" + etat.jours + ":" + (etat.articles[0]?.edition || ""), String(i)), 300);
+  }
+}, { passive: true });
+
+function aller(delta) {
+  const p = $("pages");
+  p.scrollTo({ left: (etat.index + delta) * p.clientWidth, behavior: "smooth" });
+}
+$("prec").onclick = () => aller(-1);
+$("suiv").onclick = () => aller(1);
+document.addEventListener("keydown", (e) => {
+  if (!$("feuille").classList.contains("cache") || $("journal").classList.contains("cache")) return;
+  if (e.key === "ArrowRight") aller(1);
+  if (e.key === "ArrowLeft") aller(-1);
+});
+window.addEventListener("resize", () => { $("pages").scrollLeft = etat.index * $("pages").clientWidth; });
+
+function choisirPeriode(j) {
+  etat.jours = j;
+  document.querySelectorAll(".filtres [data-jours]").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.jours === j)));
+  charger();
+}
+document.querySelectorAll(".filtres [data-jours]").forEach((b) => b.onclick = () => choisirPeriode(+b.dataset.jours));
+
+/* ---------- Votes ---------- */
+$("pages").addEventListener("click", (e) => {
+  const b = e.target.closest(".vote");
+  if (!b) return;
+  ouvrirFeuille(+b.dataset.id, +b.dataset.avis);
+});
+
+function ouvrirFeuille(id, avis) {
+  const v = etat.votes.get(id);
+  const memeAvis = v && v.avis === avis;
+  etat.feuille = { id, avis, raisons: new Set(memeAvis ? v.raisons : []) };
+  $("feuille-titre").textContent = avis > 0 ? "👍 Vous aimez cet article" : "👎 Vous n'aimez pas cet article";
+  $("commentaire").value = memeAvis ? (v.commentaire || "") : "";
+  $("btn-retirer").classList.toggle("cache", !v);
+  $("raisons").innerHTML = RAISONS[String(avis)].map((r) =>
+    `<button type="button" aria-pressed="${etat.feuille.raisons.has(r)}">${echapper(r)}</button>`).join("");
+  $("voile").classList.remove("cache"); $("feuille").classList.remove("cache");
+}
+$("raisons").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const r = b.textContent;
+  if (etat.feuille.raisons.has(r)) etat.feuille.raisons.delete(r); else etat.feuille.raisons.add(r);
+  b.setAttribute("aria-pressed", String(etat.feuille.raisons.has(r)));
+});
+function fermerFeuille() { $("voile").classList.add("cache"); $("feuille").classList.add("cache"); etat.feuille = null; }
+$("voile").onclick = fermerFeuille;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && etat.feuille) fermerFeuille(); });
+
+$("btn-enregistrer").onclick = async () => {
+  const f = etat.feuille; if (!f) return;
+  const ligne = {
+    article_id: f.id, user_id: sessionCourante, avis: f.avis,
+    raisons: [...f.raisons], commentaire: $("commentaire").value.trim() || null
+  };
+  $("btn-enregistrer").disabled = true;
+  const { error } = await sb.from("votes").upsert(ligne, { onConflict: "article_id,user_id" });
+  $("btn-enregistrer").disabled = false;
+  if (error) { alert("Avis non enregistré : " + error.message); return; }
+  etat.votes.set(f.id, ligne);
+  fermerFeuille(); rafraichirCarte(f.id);
+};
+$("btn-retirer").onclick = async () => {
+  const f = etat.feuille; if (!f) return;
+  const { error } = await sb.from("votes").delete().eq("article_id", f.id).eq("user_id", sessionCourante);
+  if (error) { alert("Erreur : " + error.message); return; }
+  etat.votes.delete(f.id);
+  fermerFeuille(); rafraichirCarte(f.id);
+};
+function rafraichirCarte(id) {
+  const i = etat.articles.findIndex((a) => a.id === id);
+  const ancien = document.querySelector(`.page[data-i="${i}"]`);
+  if (!ancien) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = carte(etat.articles[i], i, etat.articles.length).trim();
+  ancien.replaceWith(tmp.firstElementChild);
+}
+</script>
+</body>
+</html>
