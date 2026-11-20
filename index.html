@@ -131,6 +131,14 @@
   .revue li { padding: 8px 0; border-top: 1px solid var(--filet); font-size: .88rem; line-height: 1.4; }
   .revue .type { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-right: 6px; }
 
+  .propositions h2 { font-size: 1rem; margin: 2px 0 4px; }
+  .propositions .resume-revue { margin-top: 0; }
+  .propositions li { display: flex; flex-direction: column; gap: 8px; }
+  .propositions .choix { display: flex; gap: 8px; }
+  .propositions .choix button { flex: 1; padding: 8px 10px; border-radius: 10px; font-weight: 600; font-size: .85rem; background: var(--surface-2); color: var(--texte); }
+  .propositions .choix .retirer { background: var(--non-doux); color: var(--non); }
+  .propositions .etat { font-size: .8rem; color: var(--doux); }
+
   .filtres { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 14px; scrollbar-width: none; }
   .filtres::-webkit-scrollbar { display: none; }
   /* Souris (PC) : pas de défilement horizontal au doigt, les catégories passent à la ligne */
@@ -305,6 +313,7 @@
 
   <main id="accueil">
     <section class="essentiel cache" id="essentiel"></section>
+    <section class="revue propositions cache" id="propositions"></section>
     <details class="revue cache" id="revue"></details>
     <div class="titre-section"><h2 id="titre-liste">Articles</h2><span id="maj"></span></div>
     <div class="filtres" id="filtres" role="group" aria-label="Thèmes"></div>
@@ -460,12 +469,13 @@ async function charger() {
     const d = new Date(); d.setDate(d.getDate() - 6);
     requete = requete.gte("edition", d.toISOString().slice(0, 10));
   }
-  const [arts, exe, syn, rev] = await Promise.all([
+  const [arts, exe, syn, rev, props] = await Promise.all([
     requete.order("edition", { ascending: false }).order("a_la_une", { ascending: false })
       .order("score", { ascending: false }).limit(LIMITE),
     sb.from("executions").select("debut,fin,statut").order("debut", { ascending: false }).limit(1),
     derniere ? sb.from("syntheses").select("edition,points").eq("edition", derniere).maybeSingle() : Promise.resolve({ data: null }),
-    sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle()
+    sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
+    sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20)
   ]);
   if (moi !== numeroRequete) return;
   if (arts.error) { $("grille").innerHTML = `<div class="chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
@@ -481,6 +491,7 @@ async function charger() {
   etat.articles = arts.data;
   etat.synthese = syn.data;
   etat.revue = rev.data ?? null;
+  etat.propositions = props.data ?? [];
   etat.votes = votes;
 
   afficherMaj(exe.data?.[0], arts.data.length >= LIMITE, derniere);
@@ -542,6 +553,7 @@ function rendreAccueil() {
       (ch.length ? `<ul>${ch.map((c) => `<li><span class="type">${echapper(c?.type)}</span><strong>${echapper(c?.source)}</strong> — ${echapper(c?.raison)}</li>`).join("")}</ul>` : "");
     bloc.classList.remove("cache");
   } else bloc.classList.add("cache");
+  rendrePropositions();
 
   // Filtres par thème
   const compte = new Map();
@@ -565,6 +577,34 @@ function rendreAccueil() {
       </div></button>`;
   }).join("") : '<div class="chargement">Aucun article pour cette période.</div>';
 }
+
+// Propositions de retrait de source : rien n'est retiré sans l'accord du lecteur
+function rendrePropositions() {
+  const p = etat.propositions || [], bloc = $("propositions");
+  if (!p.length) { bloc.classList.add("cache"); return; }
+  const enAttente = p.filter((x) => !x.decision).length;
+  bloc.innerHTML = `<h2>🗂 ${enAttente ? `Retirer ${enAttente > 1 ? "ces sources" : "cette source"} ?` : "Vos décisions sur les sources"}</h2>
+    <p class="resume-revue">${enAttente ? "La révision mensuelle propose de ne plus suivre :" : "Elles seront prises en compte dès la prochaine collecte."}</p>
+    <ul>${p.map((x) => `<li><div><strong>${echapper(x.source)}</strong> — ${echapper(x.raison)}</div>
+      ${x.decision
+        ? `<div class="etat">${x.decision === "accepte" ? "✓ Sera retirée" : "✓ Conservée"} · <button class="lien" data-prop="${echapper(x.id)}" data-decision="">Annuler</button></div>`
+        : `<div class="choix"><button class="retirer" data-prop="${echapper(x.id)}" data-decision="accepte">Retirer</button><button data-prop="${echapper(x.id)}" data-decision="refuse">Garder</button></div>`}
+    </li>`).join("")}</ul>`;
+  bloc.classList.remove("cache");
+}
+$("propositions").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-prop]"); if (!b) return;
+  const decision = b.dataset.decision || null;
+  b.disabled = true;
+  const { data, error } = await sb.from("propositions")
+    .update({ decision, decide_le: decision ? new Date().toISOString() : null }).eq("id", +b.dataset.prop).select("id");
+  if (error) { b.disabled = false; alert("Décision non enregistrée : " + error.message); return; }
+  // 0 ligne modifiée : la proposition a déjà été traitée par la révision entre-temps
+  if (!data?.length) { alert("Cette proposition a déjà été traitée. La page va se mettre à jour."); charger(); return; }
+  const x = etat.propositions.find((y) => y.id === +b.dataset.prop);
+  if (x) x.decision = decision;
+  rendrePropositions();
+});
 
 $("filtres").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
