@@ -123,6 +123,8 @@
 
   .filtres { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 14px; scrollbar-width: none; }
   .filtres::-webkit-scrollbar { display: none; }
+  /* Souris (PC) : pas de défilement horizontal au doigt, les catégories passent à la ligne */
+  @media (pointer: fine) { .filtres { flex-wrap: wrap; overflow: visible; } }
   .filtres button {
     flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; font-size: .85rem; font-weight: 500;
     background: var(--surface); border: 1px solid var(--filet); color: var(--doux);
