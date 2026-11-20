@@ -219,6 +219,7 @@ const RAISONS = {
   "-1": ["Hors sujet", "Déjà vu / doublon", "Trop technique", "Trop superficiel", "Source peu fiable", "Pas d'intérêt pour la France"]
 };
 
+const LIMITE = 500;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 const $ = (id) => document.getElementById(id);
 const etat = { articles: [], votes: new Map(), jours: 1, index: 0, feuille: null };
@@ -299,7 +300,9 @@ async function demarrer(session) {
 }
 
 /* ---------- Données ---------- */
+let numeroRequete = 0;
 async function charger() {
+  const moi = ++numeroRequete;
   $("pages").innerHTML = '<div class="page chargement">Chargement…</div>';
   const depuis = new Date();
   depuis.setDate(depuis.getDate() - (etat.jours - 1));
@@ -310,9 +313,10 @@ async function charger() {
       .select("id,url,source,langue,titre,titre_original,resume,theme,score,a_la_une,publie_le,edition")
       .gte("edition", dateMin)
       .order("edition", { ascending: false }).order("a_la_une", { ascending: false }).order("score", { ascending: false })
-      .limit(200),
+      .limit(LIMITE),
     sb.from("executions").select("debut,fin,statut,message").order("debut", { ascending: false }).limit(1)
   ]);
+  if (moi !== numeroRequete) return;
   if (arts.error) { $("pages").innerHTML = `<div class="page chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
 
   // Si l'édition du jour n'est pas encore là, montrer la plus récente
@@ -335,19 +339,24 @@ async function charger() {
     const v = await sb.from("votes").select("article_id,avis,raisons,commentaire").in("article_id", ids);
     for (const x of v.data ?? []) etat.votes.set(x.article_id, x);
   }
+  if (moi !== numeroRequete) return;
 
-  afficherMaj(exe.data?.[0]);
+  afficherMaj(exe.data?.[0], liste.length >= LIMITE);
   rendre();
 }
 
-function afficherMaj(exe) {
+function afficherMaj(exe, tronque) {
   const alerte = $("alerte");
-  if (!exe) { $("maj").textContent = "Pas encore de mise à jour"; alerte.classList.add("cache"); return; }
-  $("maj").textContent = "Mis à jour le " + dateCourte(exe.fin || exe.debut);
-  const ageH = (Date.now() - new Date(exe.debut).getTime()) / 36e5;
-  let txt = "";
-  if (exe.statut === "echec") txt = "⚠ La dernière mise à jour a échoué. Les articles affichés peuvent dater.";
-  else if (ageH > 30) txt = "⚠ Aucune mise à jour depuis plus d'un jour.";
+  let txt = tronque ? `Seuls les ${LIMITE} articles les mieux classés sont affichés. ` : "";
+  if (!exe) {
+    $("maj").textContent = "Pas encore de mise à jour";
+  } else {
+    $("maj").textContent = "Mis à jour le " + dateCourte(exe.fin || exe.debut);
+    const ageH = (Date.now() - new Date(exe.debut).getTime()) / 36e5;
+    if (exe.statut === "echec") txt += "⚠ La dernière mise à jour a échoué. Les articles affichés peuvent dater.";
+    else if (exe.statut === "en_cours" && ageH > 1) txt += "⚠ La dernière mise à jour ne s'est pas terminée.";
+    else if (ageH > 30) txt += "⚠ Aucune mise à jour depuis plus d'un jour.";
+  }
   alerte.textContent = txt;
   alerte.classList.toggle("cache", !txt);
 }
@@ -365,7 +374,7 @@ function carte(a, i, total) {
         <span>${echapper(a.theme || "Actualité")}</span>
       </div>
       <h2>${echapper(a.titre)}</h2>
-      <div class="meta">${echapper(a.source)}${a.publie_le ? " · " + dateCourte(a.publie_le) : ""}${etranger ? " · traduit de l'" + (a.langue === "en" ? "anglais" : a.langue) : ""}</div>
+      <div class="meta">${echapper(a.source)}${a.publie_le ? " · " + dateCourte(a.publie_le) : ""}${etranger ? " · traduit de l'" + (a.langue === "en" ? "anglais" : echapper(a.langue)) : ""}</div>
       <p class="resume">${echapper(a.resume)}</p>
       ${etranger ? `<p class="original">Titre original : ${echapper(a.titre_original)}</p>` : ""}
       <div class="actions">
