@@ -106,7 +106,7 @@
     background: color-mix(in srgb, var(--fond) 88%, transparent); backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px); border-bottom: 1px solid var(--filet);
   }
-  .marque { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .marque { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; }
   .marque img { width: 28px; height: 28px; border-radius: 7px; }
   .marque b { font-size: 1.1rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   @media (max-width: 420px) { .marque img { display: none; } }
@@ -490,7 +490,7 @@
 
 <div id="app" class="cache">
   <header class="barre">
-    <div class="marque"><img src="icon.svg" alt=""><b id="titre-vue">Le Journal</b></div>
+    <button type="button" class="marque" id="btn-accueil" title="Retour à l'accueil"><img src="icon.svg" alt=""><b id="titre-vue">Le Journal</b></button>
     <span class="compteur cache" id="compteur"></span>
     <div class="segment" role="group" aria-label="Période">
       <button data-jours="1" aria-pressed="true">Jour</button>
@@ -1581,6 +1581,13 @@ function fermerLecteur() {
   if (etat.vue === "accueil") rendreListe();
 }
 $("btn-retour").onclick = () => history.back();
+// Logo et nom : retour à la page principale (on quitte le mode journal), en haut de page
+$("btn-accueil").onclick = () => {
+  if (etat.vue === "journal") {
+    window.addEventListener("popstate", () => scrollTo({ top: 0 }), { once: true });
+    history.back();
+  } else scrollTo({ top: 0, behavior: "smooth" });
+};
 
 /* ---------- Historique (bouton retour du téléphone) ---------- */
 window.addEventListener("popstate", (e) => {
