@@ -399,6 +399,28 @@
   .liste-zone .deps .coche { color: var(--doux); }
   #reglages .actions { display: flex; gap: 8px; margin-top: 18px; }
   #reglages .actions .btn { flex: 1; }
+
+  /* ---------- Ordinateur : plus de contraste, Paramètres en fenêtre centrée (le téléphone ne change pas) ---------- */
+  @media (min-width: 900px) and (pointer: fine) {
+    input, textarea { border-color: #c4cad6; }
+    #reglages details.section > summary { background: #e3e7ef; box-shadow: inset 0 0 0 1px #d3d8e2; }
+    #reglages details.section > summary:hover { background: #d9dfea; }
+    #reglages {
+      top: 50%; bottom: auto; transform: translateY(-50%); max-width: 760px; width: calc(100% - 48px);
+      max-height: 86vh; border-radius: 20px; padding: 0 32px 0; box-shadow: 0 24px 60px rgba(0,0,0,.25);
+    }
+    #reglages .poignee { display: none; }
+    #reglages h3 { position: sticky; top: 0; z-index: 2; margin: 0 -32px 4px; padding: 22px 32px 14px; font-size: 1.35rem;
+      background: var(--surface); border-bottom: 1px solid var(--filet); }
+    #reglages .actions { position: sticky; bottom: 0; z-index: 2; margin: 18px -32px 0; padding: 14px 32px 20px;
+      background: var(--surface); border-top: 1px solid var(--filet); justify-content: flex-end; }
+    #reglages .actions .btn { flex: 0 0 auto; min-width: 160px; }
+  }
+  @media (min-width: 900px) and (pointer: fine) and (prefers-color-scheme: dark) {
+    input, textarea { border-color: #3a404b; }
+    #reglages details.section > summary { background: #2b3039; box-shadow: inset 0 0 0 1px #3a404b; }
+    #reglages details.section > summary:hover { background: #333944; }
+  }
   .liste-reglages .options { grid-column: 1 / -1; grid-row: 2; }
   .liste-reglages .options .coche { padding: 2px 0; font-size: .85rem; color: var(--doux); }
   .pastilles { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
@@ -2347,6 +2369,12 @@ $("btn-admin").onclick = () => {
   $("admin-filtre").value = ""; $("comptes-filtre").value = ""; $("admin-msg").textContent = "";
   chargerAdmin(); chargerComptes(); majEtatNotifs();
 };
+// Sections repliables : une seule ouverte à la fois dans un même panneau (l'événement toggle ne remonte pas : capture)
+$("reglages").addEventListener("toggle", (e) => {
+  const d = e.target;
+  if (!d.matches?.("details.section") || !d.open) return;
+  for (const autre of d.parentElement.querySelectorAll(":scope > details.section[open]")) if (autre !== d) autre.open = false;
+}, true);
 // Sections repliables des Paramètres : toutes fermées à l'ouverture
 function fermerSections(racine) { for (const d of document.querySelectorAll(`${racine} details.section`)) d.open = false; }
 
