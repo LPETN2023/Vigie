@@ -186,6 +186,15 @@
   .essentiel { background: var(--surface); border-radius: 18px; box-shadow: var(--ombre); padding: 18px 18px 8px; margin-bottom: 22px; }
   .essentiel h2 { margin: 0 0 2px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
   .essentiel .date { color: var(--doux); font-size: .82rem; margin-bottom: 8px; }
+  .essentiel .ess-tete { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+  .essentiel .ess-tete > div { flex: 1; min-width: 0; }
+  .essentiel .chevron {
+    flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--surface-2); color: var(--doux); font-size: .9rem; transition: transform .2s;
+  }
+  .essentiel.replie { padding-bottom: 10px; }
+  .essentiel.replie .ess-corps { display: none; }
+  .essentiel.replie .chevron { transform: rotate(-90deg); }
   .point { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--filet); }
   .point:first-of-type { border-top: 0; }
   .point .puce { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 8px; }
@@ -1156,7 +1165,20 @@ function listeFiltree() {
 function majOutils() {
   $("masques").textContent = etat.masques ? `${etat.masques} masqué${etat.masques > 1 ? "s" : ""}` : "";
   $("b-loupe").classList.toggle("actif", clausesRecherche().length > 0);
+  majEssentiel();
   document.documentElement.style.setProperty("--outils", $("outils").offsetHeight + "px");
+}
+// L'essentiel du jour se replie : par choix du lecteur (mémorisé jusqu'à l'édition suivante, sur cet appareil),
+// et automatiquement pendant une recherche (le lecteur peut alors le rouvrir ; son choix vaut le temps de la recherche).
+function majEssentiel() {
+  const s = etat.synthese, bouton = $("ess-bouton"); if (!s || !bouton) return;
+  const cherche = clausesRecherche().length > 0;
+  if (!cherche) etat.essentielPendantRecherche = undefined;
+  const replie = cherche ? (etat.essentielPendantRecherche ?? true) : memoire("essentiel_replie") === String(s.edition);
+  $("essentiel").classList.toggle("replie", replie);
+  bouton.setAttribute("aria-expanded", String(!replie));
+  bouton.title = replie ? "Afficher l'essentiel du jour" : "Réduire l'essentiel du jour";
+  bouton.setAttribute("aria-label", bouton.title);
 }
 function majListes(force = false) {
   if (etat.vue !== "journal") { rendreListe(); return; }
@@ -1170,16 +1192,19 @@ function rendreAccueil() {
   const s = etat.synthese, ess = $("essentiel");
   const parId = new Map(etat.articles.map((a) => [a.id, a]));
   if (s && Array.isArray(s.points) && s.points.length && etat.jours === 1) {
-    ess.innerHTML = `<h2><svg width="20" height="20" style="color:var(--accent)"><use href="#i-eclair"/></svg>L'essentiel du jour</h2>
-      <div class="date">${echapper(dateLongue(s.edition))}</div>` +
+    ess.innerHTML = `<div class="ess-tete" id="ess-tete"><div>
+      <h2><svg width="20" height="20" style="color:var(--accent)"><use href="#i-eclair"/></svg>L'essentiel du jour</h2>
+      <div class="date">${echapper(dateLongue(s.edition))} · ${s.points.length} point${s.points.length > 1 ? "s" : ""}</div></div>
+      <button type="button" class="chevron" id="ess-bouton" aria-controls="ess-corps">▾</button></div><div class="ess-corps" id="ess-corps">` +
       s.points.map((p) => {
         const refs = (p.articles || []).map((id) => parId.get(id)).filter(Boolean);
         return `<div class="point"><span class="puce"></span><div style="min-width:0">
           <div class="rub">${echapper(p.rubrique)}</div><p>${echapper(p.texte)}</p>
           <div class="refs">${refs.map((a) => `<button data-ouvrir="${a.id}">${echapper(a.source)} · ${echapper(a.titre)}</button>`).join("")}</div>
         </div></div>`;
-      }).join("");
+      }).join("") + "</div>";
     ess.classList.remove("cache");
+    majEssentiel();
   } else ess.classList.add("cache");
 
   // Dernière révision des sources (affichée 15 jours)
@@ -1355,6 +1380,14 @@ $("grille").addEventListener("click", (e) => {
   ouvrirJournal(+b.dataset.i);
 });
 $("essentiel").addEventListener("click", (e) => {
+  if (e.target.closest("#ess-tete")) {
+    const replie = !$("essentiel").classList.contains("replie");
+    if (clausesRecherche().length) etat.essentielPendantRecherche = replie;
+    else if (replie) memoire("essentiel_replie", String(etat.synthese?.edition ?? ""));
+    else oublier("essentiel_replie");
+    majEssentiel();
+    return;
+  }
   const b = e.target.closest("[data-ouvrir]"); if (!b) return;
   const a = etat.articles.find((x) => x.id === +b.dataset.ouvrir);
   if (a) ouvrirLecteur(a);
