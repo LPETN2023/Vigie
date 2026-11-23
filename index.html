@@ -321,6 +321,15 @@
   .pastilles button:disabled { opacity: .5; }
   .proches { margin: 2px 0 8px; padding: 8px 12px; border: 1px solid var(--filet); border-radius: 12px; font-size: .85rem; }
   .proches p { margin: 0 0 6px; color: var(--doux); }
+  .liste-admin { list-style: none; margin: 8px 0 0; padding: 0; }
+  .liste-admin li { padding: 10px 0; border-top: 1px solid var(--filet); }
+  .liste-admin .tete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; overflow-wrap: anywhere; }
+  .liste-admin .note { margin: 2px 0 6px; }
+  .liste-admin select { padding: 8px; border-radius: 10px; border: 1px solid var(--filet); background: var(--surface); color: var(--texte); max-width: 100%; }
+  .etiquette { font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--filet); color: var(--doux); }
+  .etiquette.alerte { color: var(--non); border-color: currentColor; }
+  .doublon { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--filet); font-size: .88rem; }
+  .doublon b { overflow-wrap: anywhere; }
   .liste-principaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); column-gap: 12px; }
   #bienvenue { min-height: 100%; display: grid; place-items: center; padding: 16px; }
   #bienvenue .carte { width: 100%; max-width: 560px; background: var(--surface); padding: 28px 22px; border-radius: 20px; box-shadow: var(--ombre); }
@@ -471,6 +480,19 @@
 <div id="reglages" class="cache" role="dialog" aria-modal="true" aria-labelledby="reglages-titre">
   <div class="poignee"></div>
   <h3 id="reglages-titre">Paramètres</h3>
+  <div id="vue-admin" class="cache">
+    <button class="lien" type="button" id="admin-retour">‹ Retour aux paramètres</button>
+    <p class="note">Catalogue commun à tous les lecteurs. Les auteurs des thèmes ne sont jamais affichés. Chaque action est tracée.</p>
+    <h4>Doublons probables</h4>
+    <div id="admin-doublons"></div>
+    <h4>Tous les thèmes</h4>
+    <p class="note">« Dernier usage » : dernier article classé sous ce thème, ou dont le titre ou le résumé cite son nom. Les moins utilisés sont en tête.</p>
+    <input type="search" id="admin-filtre" placeholder="Filtrer les thèmes" aria-label="Filtrer les thèmes" autocomplete="off">
+    <div class="msg" id="admin-msg" role="alert"></div>
+    <ul class="liste-admin" id="admin-liste"></ul>
+  </div>
+  <div id="vue-reglages">
+  <button class="lien cache" type="button" id="btn-admin">Administration des thèmes ›</button>
   <h4>Thèmes principaux</h4>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
@@ -490,6 +512,7 @@
   <p class="note" id="resume-zone"></p>
   <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
   <div class="liste-zone" id="liste-zone"></div>
+  </div>
   <div class="actions">
     <button class="btn" id="btn-deco"><svg width="18" height="18"><use href="#i-sortie"/></svg>Se déconnecter</button>
     <button class="btn principal" id="btn-reglages-fermer">Fermer</button>
@@ -547,7 +570,8 @@ const etat = {
   prefsChargees: false, recherche: "", zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null,
   // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
   tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
-  perso: [] // thèmes personnels suivis : {id, nom, categorie, partage, actif, mien}
+  perso: [], // thèmes personnels suivis : {id, nom, categorie, partage, actif, mien}
+  admin: false, adminThemes: [], rechargerApres: false // administration (l'affichage seulement : chaque action est vérifiée côté serveur)
 };
 let zoneDeps = new Set();
 
@@ -691,6 +715,7 @@ async function demarrer(session) {
     if (ancien) oublier(cleAttente(ancien));
     lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; etat.zoneSeule = false;
     etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0; etat.perso = [];
+    etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false;
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
   }
@@ -699,6 +724,12 @@ async function demarrer(session) {
   afficher("demarrage");
   const { data, error } = await sb.rpc("est_lecteur");
   if (error || !data) { afficher("attente"); return; }
+  etat.admin = false;
+  sb.rpc("est_admin").then((r) => {
+    if (sessionCourante !== uid) return;
+    etat.admin = r.data === true;
+    if (etat.reglages) $("btn-admin").classList.toggle("cache", !etat.admin);
+  }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
   const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,parcours_fini")
     .eq("user_id", uid).maybeSingle();
@@ -1552,6 +1583,8 @@ function ouvrirReglages() {
   $("nouveau-theme").value = ""; fermerProches();
   $("suggestions").innerHTML = '<p class="note">Chargement…</p>';
   rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions();
+  afficherVueAdmin(false);
+  $("btn-admin").classList.toggle("cache", !etat.admin);
   history.pushState({ vue: "reglages" }, "");
   $("voile").classList.remove("cache"); $("reglages").classList.remove("cache");
 }
@@ -1560,8 +1593,139 @@ function masquerReglages() {
   if (!etat.reglages) return;
   etat.reglages = false;
   $("voile").classList.add("cache"); $("reglages").classList.add("cache");
+  // Après une action d'administration (renommage, fusion…), les articles chargés peuvent porter d'anciens noms
+  if (etat.rechargerApres && sessionCourante) { etat.rechargerApres = false; etat.prefsModif = false; charger(); return; }
   if (etat.prefsModif && sessionCourante) { etat.prefsModif = false; rafraichirAffichage(); }
 }
+
+/* ---------- Administration des thèmes (compte admin) ---------- */
+function afficherVueAdmin(oui) {
+  $("vue-admin").classList.toggle("cache", !oui);
+  $("vue-reglages").classList.toggle("cache", oui);
+  $("reglages-titre").textContent = oui ? "Administration des thèmes" : "Paramètres";
+  $("reglages").scrollTop = 0;
+}
+$("btn-admin").onclick = () => { afficherVueAdmin(true); $("admin-filtre").value = ""; $("admin-msg").textContent = ""; chargerAdmin(); };
+$("admin-retour").onclick = () => afficherVueAdmin(false);
+let numeroAdmin = 0;
+async function chargerAdmin() {
+  const moi = ++numeroAdmin, uid = sessionCourante;
+  $("admin-liste").innerHTML = '<li class="note">Chargement…</li>';
+  $("admin-doublons").innerHTML = "";
+  let th, db;
+  try { [th, db] = await Promise.all([sb.rpc("admin_themes"), sb.rpc("admin_doublons")]); }
+  catch (e) { th = { error: { message: "connexion ?" } }; db = { data: [] }; }
+  if (moi !== numeroAdmin || uid !== sessionCourante) return;
+  if (th.error) { etat.adminThemes = []; $("admin-liste").innerHTML = `<li class="note">Indisponible : ${echapper(th.error.message)}</li>`; return; }
+  etat.adminThemes = (th.data ?? []).filter((t) => t && typeof t.nom === "string").map((t) => ({ ...t, id: Number(t.id) }));
+  const paires = (db.error ? [] : db.data ?? []).filter((p) => p && typeof p.nom_a === "string" && typeof p.nom_b === "string");
+  $("admin-doublons").innerHTML = paires.length
+    ? paires.map((p) => `<div class="doublon"><b>${echapper(p.nom_a)}</b> ↔ <b>${echapper(p.nom_b)}</b>
+        <span class="pastilles"><button type="button" data-garder="${Number(p.id_a)}" data-fondre="${Number(p.id_b)}">Garder le 1er</button>
+        <button type="button" data-garder="${Number(p.id_b)}" data-fondre="${Number(p.id_a)}">Garder le 2d</button></span></div>`).join("")
+    : '<p class="note">Aucun doublon probable.</p>';
+  rendreAdmin();
+}
+const dateCourte = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "jamais";
+function rendreAdmin() {
+  if (!etat.adminThemes.length && $("admin-liste").querySelector(".note")) return; // garde « Chargement… » / « Indisponible »
+  const q = normaliser($("admin-filtre").value);
+  const liste = etat.adminThemes.filter((t) => !q || normaliser(t.nom).includes(q));
+  $("admin-liste").innerHTML = liste.length ? liste.map((t) => {
+    const perso = t.type === "perso", n = Number(t.nb_lecteurs) || 0, m = Number(t.nb_masques) || 0, c = Number(t.nb_classes) || 0;
+    const usage = [t.dernier_classement, t.derniere_mention].filter(Boolean).sort().pop() || null;
+    const infos = [perso ? `${n} lecteur${n > 1 ? "s" : ""}` : (m ? `masqué par ${m}` : "affiché pour tous"),
+      `${c} article${c > 1 ? "s" : ""} classé${c > 1 ? "s" : ""}`, `dernier usage : ${dateCourte(usage)}`];
+    return `<li data-id="${t.id}"><div class="tete">${echapper(t.nom)}
+        <span class="etiquette">${perso ? (t.categorie ? "perso · catégorie" : "perso") : "principal"}</span>
+        ${t.actif ? "" : '<span class="etiquette alerte">désactivé</span>'}
+        ${perso && !t.partage ? '<span class="etiquette">privé</span>' : ""}
+        ${t.hors_plafond ? '<span class="etiquette alerte">hors plafond : ignoré par la collecte</span>' : ""}</div>
+      <div class="note">${infos.join(" · ")}</div>
+      <div class="pastilles">
+        <button type="button" data-act="renommer">Renommer</button>
+        <button type="button" data-act="actif">${t.actif ? "Désactiver" : "Réactiver"}</button>
+        ${perso ? `<button type="button" data-act="categorie">${t.categorie ? "Retirer des catégories" : "En faire une catégorie"}</button>
+                   <button type="button" data-act="principal">Promouvoir en principal</button>` : ""}
+        <button type="button" data-act="fusionner">Fusionner dans…</button>
+        <button type="button" data-act="supprimer">Supprimer</button>
+      </div></li>`;
+  }).join("") : '<li class="note">Aucun thème.</li>';
+}
+$("admin-filtre").addEventListener("input", rendreAdmin);
+// Exécute une action d'administration (une seule à la fois), puis recharge la liste et les thèmes du compte
+let adminOccupe = false;
+async function actionAdmin(rpc, params, succes) {
+  if (adminOccupe) return;
+  const uid = sessionCourante;
+  adminOccupe = true;
+  $("vue-admin").setAttribute("aria-busy", "true");
+  for (const b of $("vue-admin").querySelectorAll("button:not(#admin-retour), select")) b.disabled = true;
+  $("admin-msg").textContent = "";
+  try {
+    let ok = false;
+    try {
+      const { error } = await sb.rpc(rpc, params);
+      if (error) $("admin-msg").textContent = erreurRpc(error);
+      else { ok = true; toast(succes); }
+    } catch (e) { $("admin-msg").textContent = "Action impossible (connexion ?)"; }
+    if (uid !== sessionCourante) return;
+    if (ok) {
+      versionSuivis++;
+      // Panneau déjà fermé pendant l'appel : recharger tout de suite ; sinon, à la fermeture
+      if (etat.reglages) etat.rechargerApres = true; else charger();
+    }
+    await Promise.all([chargerAdmin(), ok ? rechargerThemes() : null]);
+  } finally {
+    adminOccupe = false;
+    $("vue-admin").removeAttribute("aria-busy");
+    if (uid === sessionCourante) rendreAdmin(); // réactive les boutons
+  }
+}
+$("admin-doublons").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-garder]"); if (!b) return;
+  const garder = etat.adminThemes.find((t) => t.id === Number(b.dataset.garder));
+  const fondre = etat.adminThemes.find((t) => t.id === Number(b.dataset.fondre));
+  if (!garder || !fondre) return;
+  if (!confirm(`Fusionner « ${fondre.nom} » dans « ${garder.nom} » ?\nSes lecteurs et ses articles passent sur « ${garder.nom} », puis il est supprimé.`)) return;
+  actionAdmin("admin_fusionner_themes", { p_source: fondre.id, p_cible: garder.id }, "Thèmes fusionnés.");
+});
+$("admin-liste").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const li = b.closest("li[data-id]"), t = etat.adminThemes.find((x) => x.id === Number(li?.dataset.id));
+  if (!t) return;
+  const act = b.dataset.act;
+  if (act === "renommer") {
+    const saisi = prompt(`Nouveau nom pour « ${t.nom} » (60 caractères max.) :`, t.nom);
+    const nom = (saisi ?? "").replace(/\s+/g, " ").trim();
+    if (!nom || nom === t.nom) return;
+    actionAdmin("admin_modifier_theme", { p_id: t.id, p_nom: nom }, "Thème renommé.");
+  } else if (act === "actif") {
+    if (t.actif && !confirm(`Désactiver « ${t.nom} » pour tous les lecteurs ?\nIl ne sera plus utilisé par la collecte, mais reste réactivable.`)) return;
+    actionAdmin("admin_modifier_theme", { p_id: t.id, p_actif: !t.actif }, t.actif ? "Thème désactivé." : "Thème réactivé.");
+  } else if (act === "categorie") {
+    actionAdmin("admin_modifier_theme", { p_id: t.id, p_categorie: !t.categorie }, "Thème modifié.");
+  } else if (act === "principal") {
+    if (!confirm(`Faire de « ${t.nom} » un thème principal, proposé à tous les lecteurs ?`)) return;
+    actionAdmin("admin_modifier_theme", { p_id: t.id, p_principal: true }, "Thème promu en principal.");
+  } else if (act === "supprimer") {
+    if (!confirm(`Supprimer définitivement « ${t.nom} » ?\nIl disparaît des thèmes de tous les lecteurs qui le suivent.`)) return;
+    actionAdmin("admin_supprimer_theme", { p_id: t.id }, "Thème supprimé.");
+  } else if (act === "fusionner") {
+    const autres = etat.adminThemes.filter((x) => x.id !== t.id).sort((x, y) => x.nom.localeCompare(y.nom, "fr"));
+    if (!autres.length) return;
+    b.parentElement.innerHTML = `<select aria-label="Thème qui sera conservé">${autres.map((x) =>
+        `<option value="${x.id}">${echapper(x.nom)}${x.type === "principal" ? " (principal)" : ""}</option>`).join("")}</select>
+      <button type="button" data-act="fusion-ok">Fusionner</button><button type="button" data-act="fusion-annuler">Annuler</button>`;
+  } else if (act === "fusion-annuler") {
+    rendreAdmin();
+  } else if (act === "fusion-ok") {
+    const cible = etat.adminThemes.find((x) => x.id === Number(li.querySelector("select")?.value));
+    if (!cible) return;
+    if (!confirm(`Fusionner « ${t.nom} » dans « ${cible.nom} » ?\nSes lecteurs et ses articles passent sur « ${cible.nom} », puis il est supprimé.`)) return;
+    actionAdmin("admin_fusionner_themes", { p_source: t.id, p_cible: cible.id }, "Thèmes fusionnés.");
+  }
+});
 $("btn-reglages").onclick = ouvrirReglages;
 $("btn-reglages-fermer").onclick = fermerReglages;
 
