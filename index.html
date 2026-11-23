@@ -110,7 +110,7 @@
   .marque img { width: 28px; height: 28px; border-radius: 7px; }
   .marque b { font-size: 1.1rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .marque .sous-titre { font-size: .82rem; font-weight: 500; color: var(--doux); letter-spacing: 0; }
-  @media (max-width: 400px) { .marque b { display: flex; flex-direction: column; line-height: 1.15; } .marque .sous-titre { font-size: .72rem; } }
+  @media (max-width: 400px) { .marque .sous-titre { display: none; } }
   .compteur { font-variant-numeric: tabular-nums; color: var(--doux); font-size: .85rem; margin-right: 6px; }
   .segment { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; margin-right: 4px; }
   .segment button { padding: 6px 10px; border-radius: 8px; font-size: .8rem; font-weight: 600; color: var(--doux); }
@@ -444,7 +444,7 @@
 <section id="connexion" class="cache">
   <form id="form-connexion" autocomplete="on">
     <div class="logo"><img src="icon.svg" alt=""><span>Vigie</span></div>
-    <p class="sous">Veille cyber et judiciaire</p>
+    <p class="sous">Veille cyber</p>
     <label for="email">Adresse e-mail</label>
     <input id="email" type="email" autocomplete="username" required>
     <label for="mdp">Mot de passe</label>
