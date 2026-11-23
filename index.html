@@ -1144,9 +1144,11 @@ function listeFiltree() {
   const rejete = (a) => etat.votes.get(a.id)?.avis === -1;
   // Vue « Gardés » : chaque article gardé apparaît seul (pas de regroupement par sujet)
   if (etat.gardesSeuls) { etat.nbAutres = new Map(); etat.masques = 0; return base; }
+  // Pendant une recherche par mots, rien n'est masqué : les articles lus et « 👎 » apparaissent aussi
+  const cherche = clauses.length > 0;
   const avantMasquage = regrouper(base).liste.length;
-  const r = regrouper(etat.prefs.masquer_rejetes ? base.filter((a) => !rejete(a)) : base);
-  const liste = r.liste.filter((p) => !(etat.prefs.masquer_lus && lus.has(p.id)));
+  const r = regrouper(etat.prefs.masquer_rejetes && !cherche ? base.filter((a) => !rejete(a)) : base);
+  const liste = r.liste.filter((p) => !(etat.prefs.masquer_lus && !cherche && lus.has(p.id)));
   etat.nbAutres = r.nb;
   etat.masques = Math.max(0, avantMasquage - liste.length);
   return liste;
@@ -1257,7 +1259,9 @@ function rendreBandeau(n) {
   const saisie = etat.recherche.trim();
   if (!puces.length && !saisie) { b.classList.add("cache"); return; }
   const total = etat.gardesSeuls ? etat.articlesGardes.length : regrouper(etat.articles).liste.length;
-  const aide = etat.mots.length > 1 ? ` · touchez « ${etat.ouMots ? "ou" : "et"} » pour ${etat.ouMots ? "exiger tous les mots" : "accepter l'un ou l'autre"}` : "";
+  const inclus = clausesRecherche().length && !etat.gardesSeuls && (etat.prefs.masquer_lus || etat.prefs.masquer_rejetes)
+    ? " · lus et 👎 inclus" : "";
+  const aide = inclus + (etat.mots.length > 1 ? ` · touchez « ${etat.ouMots ? "ou" : "et"} » pour ${etat.ouMots ? "exiger tous les mots" : "accepter l'un ou l'autre"}` : "");
   b.innerHTML = `<div class="ligne"><span class="titre">Filtres</span>${puces.join("")}${saisie ? `<span class="puce"><span>✎ « ${echapper(saisie)} »</span></span>` : ""}</div>
     <div class="bas"><span>${n} article${n > 1 ? "s" : ""} sur ${total}${aide}</span><button type="button" data-retirer="tout">Tout effacer</button></div>`;
   b.classList.remove("cache");
