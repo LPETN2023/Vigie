@@ -370,16 +370,18 @@
   #reglages { max-height: 90vh; }
   #reglages h3 { margin: 0 0 4px; font-size: 1.15rem; }
   #reglages h4 { margin: 18px 0 6px; font-size: .95rem; }
-  #reglages details.section { border-top: 1px solid var(--filet); }
-  #reglages details.section:last-of-type { border-bottom: 1px solid var(--filet); }
+  /* Sections repliables : titres bien distincts du contenu */
+  #reglages details.section { margin: 10px 0; }
   #reglages details.section > summary {
-    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 2px; font-weight: 700; font-size: 1rem;
+    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 13px 14px; border-radius: 12px; background: var(--surface-2); border-left: 4px solid var(--accent);
+    font-weight: 700; font-size: 1.02rem; color: var(--texte);
   }
   #reglages details.section > summary::-webkit-details-marker { display: none; }
-  #reglages details.section > summary::after { content: "▾"; color: var(--doux); transition: transform .2s; }
+  #reglages details.section > summary::after { content: "▾"; color: var(--accent); font-size: 1.1rem; transition: transform .2s; }
   #reglages details.section:not([open]) > summary::after { transform: rotate(-90deg); }
-  #reglages details.section[open] { padding-bottom: 14px; }
+  #reglages details.section[open] > summary { background: var(--accent-doux); color: var(--accent); border-radius: 12px 12px 0 0; }
+  #reglages details.section[open] { padding: 0 2px 14px; border-bottom: 1px solid var(--filet); }
   #reglages details.section > h4:first-of-type { margin-top: 6px; }
   #comptes-filtre { margin: 8px 0 2px; }
   .note { margin: 4px 0 8px; color: var(--doux); font-size: .82rem; }
