@@ -909,8 +909,23 @@ $("btn-oubli").onclick = async () => {
   } catch (e) { messageConnexion("Connexion au serveur impossible. Vérifiez le réseau."); }
   finally { $("btn-oubli").disabled = false; }
 };
-// Demande un nouveau mot de passe (deux saisies) et l'enregistre ; renvoie true si c'est fait
-async function choisirMotDePasse(titre) {
+// Redemande le mot de passe actuel avant une action sensible (session laissée ouverte sur un appareil)
+async function verifierMotDePasseActuel(titre) {
+  const email = (await sb.auth.getUser().catch(() => ({})))?.data?.user?.email;
+  if (!email) { toast("Session expirée : reconnectez-vous."); return false; }
+  const mdp = await dialogue({ titre, texte: "Pour confirmer, saisissez votre mot de passe actuel.", saisie: "", ok: "Continuer", type: "password", max: 72 });
+  if (mdp === null) return false;
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password: mdp });
+    if (!error) return true;
+    await dialogue({ titre: "Mot de passe incorrect", texte: "L'action est annulée.", ok: "OK" });
+  } catch (e) { toast("Connexion au serveur impossible."); }
+  return false;
+}
+// Demande un nouveau mot de passe (deux saisies) et l'enregistre ; renvoie true si c'est fait.
+// recuperation : retour par le lien « mot de passe oublié » (l'ancien mot de passe n'est pas connu)
+async function choisirMotDePasse(titre, recuperation = false) {
+  if (!recuperation && !await verifierMotDePasseActuel("Changer le mot de passe")) return false;
   for (;;) {
     const mdp = await dialogue({ titre, texte: "10 caractères minimum.", saisie: "", ok: "Suivant", type: "password", max: 72 });
     if (mdp === null) return false;
@@ -921,14 +936,31 @@ async function choisirMotDePasse(titre) {
     try {
       const { error } = await sb.auth.updateUser({ password: mdp });
       if (!error) { toast("Mot de passe enregistré."); return true; }
-      await dialogue({ titre: "Mot de passe refusé", texte: /same|different/i.test(error.message) ? "Choisissez un mot de passe différent de l'ancien."
-        : /weak|pwned|password/i.test(error.message) ? "Mot de passe trop faible ou trop courant : choisissez-en un autre." : error.message, ok: "Recommencer" });
+      const code = error.code || "", m = error.message || "";
+      if (code === "reauthentication_needed" || /reauth/i.test(m)) {
+        await dialogue({ titre: "Reconnexion nécessaire", texte: "Par sécurité, déconnectez-vous puis reconnectez-vous avant de changer le mot de passe.", ok: "OK" });
+        return false;
+      }
+      await dialogue({ titre: "Mot de passe refusé", texte: code === "same_password" || /same|different/i.test(m) ? "Choisissez un mot de passe différent de l'ancien."
+        : code === "weak_password" || /weak|pwned/i.test(m) ? "Mot de passe trop faible ou trop courant : choisissez-en un autre." : m, ok: "Recommencer" });
     } catch (e) { toast("Connexion au serveur impossible."); return false; }
   }
 }
+// Retire l'abonnement aux notifications de cet appareil (déconnexion, compte qui n'est pas administrateur)
+async function oublierAbonnementPush() {
+  if (!pushPossible()) return;
+  try {
+    const sub = await abonnementActuel();
+    if (!sub) return;
+    await sb.rpc("desabonner_push", { p_endpoint: sub.endpoint }).then(() => {}, () => {});
+    await sub.unsubscribe();
+  } catch (e) { /* sans effet : la fonction d'envoi purgera l'abonnement expiré */ }
+}
 async function supprimerMonCompte() {
   if (!await confirmer("Supprimer votre compte ?", "Suppression définitive : vos préférences, avis, lectures et articles gardés sont effacés. Les thèmes que vous avez proposés restent disponibles pour les autres, sans votre nom.", "Supprimer mon compte", true)) return;
+  if (!await verifierMotDePasseActuel("Supprimer mon compte")) return;
   try {
+    await oublierAbonnementPush();
     const { error } = await sb.rpc("supprimer_mon_compte");
     if (error) { await dialogue({ titre: "Suppression impossible", texte: erreurRpc(error) }); return; }
     toast("Votre compte a été supprimé.");
@@ -962,7 +994,7 @@ $("form-connexion").onsubmit = async (e) => {
   } catch (err) { messageConnexion("Connexion au serveur impossible. Vérifiez le réseau."); }
   finally { $("btn-connexion").disabled = false; }
 };
-$("btn-deco").onclick = $("btn-deco-attente").onclick = $("b-deco").onclick = () => sb.auth.signOut();
+$("btn-deco").onclick = $("btn-deco-attente").onclick = $("b-deco").onclick = async () => { await oublierAbonnementPush(); sb.auth.signOut(); };
 $("btn-reessayer").onclick = async () => {
   $("btn-reessayer").disabled = true;
   try { const { data } = await sb.auth.getSession(); sessionCourante = null; await demarrer(data?.session ?? null); }
@@ -973,7 +1005,7 @@ let sessionCourante = null;
 sb.auth.onAuthStateChange((evt, session) => setTimeout(() => {
   demarrer(session);
   // Retour par le lien « mot de passe oublié » : la session est ouverte, on demande le nouveau mot de passe
-  if (evt === "PASSWORD_RECOVERY") choisirMotDePasse("Choisissez un nouveau mot de passe");
+  if (evt === "PASSWORD_RECOVERY") choisirMotDePasse("Choisissez un nouveau mot de passe", true);
 }, 0));
 async function demarrer(session) {
   const uid = session?.user?.id ?? null;
@@ -990,6 +1022,7 @@ async function demarrer(session) {
     lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); effacerRecherche(); etat.zoneSeule = false;
     etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0; etat.perso = [];
     etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false; etat.alertes = null; rendreAlertesAdmin();
+    etat.comptes = null; ouvrirDemande = null;
     etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
     if (dialogueEnCours) dialogueEnCours(null);
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
@@ -1022,6 +1055,7 @@ async function demarrer(session) {
     etat.admin = r.data === true;
     if (etat.reglages) $("btn-admin").classList.toggle("cache", !etat.admin);
     majAlertesAdmin(); traiterOuverture();
+    if (!r.error && r.data === false) oublierAbonnementPush(); // appareil abonné par un administrateur, utilisé par un autre compte
   }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
   const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,parcours_fini")
@@ -2292,7 +2326,11 @@ $("btn-notifs").onclick = async () => {
   try {
     if (etat.notifsActives) {
       const sub = await abonnementActuel();
-      if (sub) { await sb.rpc("admin_desabonner_push", { p_endpoint: sub.endpoint }); await sub.unsubscribe(); }
+      if (sub) {
+        const { error } = await sb.rpc("admin_desabonner_push", { p_endpoint: sub.endpoint });
+        if (error) { $("notifs-msg").textContent = erreurRpc(error); return; }
+        await sub.unsubscribe();
+      }
       toast("Notifications désactivées sur cet appareil.");
       return;
     }

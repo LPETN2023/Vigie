@@ -23,8 +23,11 @@ self.addEventListener("notificationclick", (e) => {
     if (u.href.startsWith(self.registration.scope)) url = u.href;
   } catch (err) { /* lien invalide : accueil */ }
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((fenetres) => {
+    // Fenêtre déjà ouverte : on la réutilise ; si elle ne peut pas naviguer (non contrôlée), on en ouvre une autre
     for (const f of fenetres) {
-      if (f.url.startsWith(self.registration.scope)) return f.focus().then((g) => (g || f).navigate ? (g || f).navigate(url) : null);
+      if (f.url.startsWith(self.registration.scope)) {
+        return f.focus().then((g) => (g || f).navigate(url)).catch(() => self.clients.openWindow(url));
+      }
     }
     return self.clients.openWindow(url);
   }));
