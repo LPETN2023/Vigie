@@ -91,7 +91,8 @@
   }
   .marque { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
   .marque img { width: 28px; height: 28px; border-radius: 7px; }
-  .marque b { font-size: 1.1rem; letter-spacing: -.01em; white-space: nowrap; }
+  .marque b { font-size: 1.1rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 420px) { .marque img { display: none; } }
   .compteur { font-variant-numeric: tabular-nums; color: var(--doux); font-size: .85rem; margin-right: 6px; }
   .segment { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; margin-right: 4px; }
   .segment button { padding: 6px 10px; border-radius: 8px; font-size: .8rem; font-weight: 600; color: var(--doux); }
@@ -100,6 +101,24 @@
     margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px; font-size: .85rem;
     background: var(--une-doux); color: var(--une);
   }
+
+  /* ---------- Barre d'outils (masquage, recherche) ---------- */
+  .outils {
+    position: sticky; top: calc(var(--entete) + env(safe-area-inset-top)); z-index: 19; display: flex; flex-wrap: wrap;
+    align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--filet);
+    background: color-mix(in srgb, var(--fond) 92%, transparent); backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+  .bascule {
+    min-height: 36px; padding: 0 12px; border-radius: 999px; font-size: .85rem; font-weight: 600;
+    background: var(--surface); border: 1px solid var(--filet); color: var(--doux);
+  }
+  .bascule[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .bascule[aria-pressed="true"]::before { content: "✓ "; }
+  @media (prefers-color-scheme: dark) { .bascule[aria-pressed="true"] { color: #0b1020; } }
+  .outils .masques { font-size: .76rem; color: var(--doux); margin-right: auto; }
+  .outils .recherche { flex: 1 0 100%; }
+  .outils .recherche input { padding: 8px 12px; }
 
   /* ---------- Accueil ---------- */
   #accueil { max-width: 1200px; margin: 0 auto; padding: 16px 16px calc(env(safe-area-inset-bottom) + 32px); }
@@ -148,6 +167,7 @@
     background: var(--surface); border: 1px solid var(--filet); color: var(--doux);
   }
   .filtres button[aria-pressed="true"] { background: var(--texte); color: var(--fond); border-color: var(--texte); }
+  .filtres button:disabled { opacity: .45; cursor: default; }
 
   .grille { display: grid; gap: 10px; grid-template-columns: 1fr; }
   .vignette {
@@ -167,6 +187,9 @@
   .badge.une { background: var(--une-doux); color: var(--une); }
   .badge.avis-1 { background: var(--ok-doux); color: var(--ok); }
   .badge.avis--1 { background: var(--non-doux); color: var(--non); }
+  .badge.payant { background: var(--surface-2); color: var(--doux); text-transform: none; letter-spacing: 0; }
+  .badge.zone { background: var(--accent-doux); color: var(--accent); text-transform: none; letter-spacing: 0; }
+  .meta.autres { margin-top: 6px; font-weight: 600; color: var(--accent); }
   @media (min-width: 700px) {
     .grille { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .vignette { flex-direction: column; padding: 0; overflow: hidden; gap: 0; }
@@ -185,7 +208,7 @@
 
   /* ---------- Journal (défilement) ---------- */
   #journal {
-    position: fixed; inset: calc(var(--entete) + env(safe-area-inset-top)) 0 0 0; display: flex;
+    position: fixed; inset: calc(var(--entete) + env(safe-area-inset-top) + var(--outils, 0px)) 0 0 0; display: flex;
     overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none;
     overscroll-behavior-x: contain; background: var(--fond);
   }
@@ -208,6 +231,7 @@
   .fiche .resume {
     flex: 1; min-height: 0; overflow: hidden; margin: 0; font-family: var(--serif); font-size: clamp(1rem, 4vw, 1.12rem);
     line-height: 1.55; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent);
+    text-align: justify; hyphens: auto; -webkit-hyphens: auto;
   }
   .fiche .pied {
     flex: 0 0 auto; display: flex; gap: 8px; align-items: center; padding: 12px 18px 16px; border-top: 1px solid var(--filet);
@@ -241,9 +265,15 @@
   .lecture .texte p.avis-ia, .avis-ia {
     font-family: var(--sans); line-height: 1.45; font-size: .82rem; color: var(--doux); background: var(--surface-2); padding: 10px 12px; border-radius: 10px; margin: 0 0 18px;
   }
-  .lecture .resume-l { font-weight: 600; line-height: 1.55; margin: 0 0 18px; }
-  .lecture .texte p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.7; margin: 0 0 1.05em; }
+  .lecture .resume-l { font-weight: 600; line-height: 1.55; margin: 0 0 18px; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+  .lecture .texte p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.7; margin: 0 0 1.05em; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+  .lecture .texte p.avis-ia, .lecture .texte p.indispo { text-align: left; hyphens: manual; -webkit-hyphens: manual; }
   .lecture .indispo { color: var(--doux); font-size: .95rem; }
+  .meme-sujet { margin-top: 28px; border-top: 1px solid var(--filet); padding-top: 14px; }
+  .meme-sujet h2 { font-size: 1rem; margin: 0 0 8px; }
+  .lien-sujet { display: block; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; background: var(--surface-2); }
+  .lien-sujet .src { display: block; font-size: .75rem; color: var(--doux); font-weight: 600; }
+  .lien-sujet .tit { display: block; line-height: 1.3; margin: 2px 0; }
   .barre-vote {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 16px); z-index: 31;
     display: flex; gap: 8px; padding: 8px; background: var(--surface); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.18);
@@ -252,11 +282,11 @@
 
   /* ---------- Feuille de vote ---------- */
   #voile { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.4); }
-  #feuille {
+  #feuille, #reglages {
     position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; max-height: 85vh; overflow-y: auto; margin: 0 auto; max-width: 640px;
     background: var(--surface); border-radius: 20px 20px 0 0; padding: 10px 18px calc(env(safe-area-inset-bottom) + 18px);
   }
-  #feuille .poignee { width: 40px; height: 5px; border-radius: 3px; background: var(--filet); margin: 0 auto 14px; }
+  #feuille .poignee, #reglages .poignee { width: 40px; height: 5px; border-radius: 3px; background: var(--filet); margin: 0 auto 14px; }
   #feuille h3 { margin: 0 0 4px; font-size: 1.15rem; }
   #feuille p { margin: 0 0 14px; color: var(--doux); font-size: .88rem; }
   .puces { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -264,6 +294,39 @@
   .puces button[aria-pressed="true"] { background: var(--texte); color: var(--fond); border-color: var(--texte); }
   #feuille .actions { display: flex; gap: 8px; margin-top: 16px; }
   #feuille .actions .btn { flex: 1; }
+
+  /* ---------- Paramètres ---------- */
+  #reglages { max-height: 90vh; }
+  #reglages h3 { margin: 0 0 4px; font-size: 1.15rem; }
+  #reglages h4 { margin: 18px 0 6px; font-size: .95rem; }
+  .note { margin: 4px 0 8px; color: var(--doux); font-size: .82rem; }
+  .ligne { display: flex; gap: 8px; }
+  .ligne input { flex: 1; min-width: 0; }
+  .liste-reglages { list-style: none; margin: 0 0 10px; padding: 0; }
+  .liste-reglages li { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 6px 0; border-top: 1px solid var(--filet); }
+  .liste-reglages .nom { grid-column: 1; grid-row: 1; font-weight: 600; overflow-wrap: anywhere; }
+  .liste-reglages .icone { grid-column: 2; grid-row: 1; }
+  .liste-reglages .coche { grid-column: 1 / -1; grid-row: 2; padding: 2px 0; font-size: .85rem; color: var(--doux); }
+  .coche { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 0; color: var(--texte); font-size: .92rem; }
+  input[type="checkbox"] { width: 20px; height: 20px; padding: 0; flex: none; accent-color: var(--accent); }
+  .liste-zone { max-height: 40vh; overflow-y: auto; margin-top: 8px; border: 1px solid var(--filet); border-radius: 12px; padding: 4px 12px; }
+  .liste-zone .deps { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); column-gap: 12px; padding-left: 26px; }
+  .liste-zone .deps .coche { color: var(--doux); }
+  #reglages .actions { display: flex; gap: 8px; margin-top: 18px; }
+  #reglages .actions .btn { flex: 1; }
+
+  /* ---------- Bulle de sélection et message bref ---------- */
+  #bulle {
+    position: fixed; z-index: 35; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 90px);
+    padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem; background: var(--texte); color: var(--fond);
+    box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  }
+  #bulle.flottante { transform: none; bottom: auto; }
+  #toast {
+    position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 24px);
+    max-width: 90vw; padding: 10px 16px; border-radius: 12px; font-size: .9rem; background: var(--texte); color: var(--fond);
+    box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  }
 </style>
 </head>
 <body>
@@ -275,6 +338,8 @@
   <symbol id="i-haut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11M2 12v7a2 2 0 0 0 2 2h12.3a2 2 0 0 0 2-1.7l1.4-7A2 2 0 0 0 17.7 10H14V5.5A2.5 2.5 0 0 0 11.5 3L7 10H4a2 2 0 0 0-2 2z"/></symbol>
   <symbol id="i-bas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3M22 12V5a2 2 0 0 0-2-2H7.7a2 2 0 0 0-2 1.7l-1.4 7A2 2 0 0 0 6.3 14H10v4.5a2.5 2.5 0 0 0 2.5 2.5L17 14h3a2 2 0 0 0 2-2z"/></symbol>
   <symbol id="i-bouclier" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h8M19 6h1M4 12h3M12 12h8M4 18h9M20 18h0"/><circle cx="15.5" cy="6" r="2"/><circle cx="9.5" cy="12" r="2"/><circle cx="16.5" cy="18" r="2"/></symbol>
   <symbol id="i-eclair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
 </svg>
 
@@ -307,9 +372,19 @@
       <button data-jours="7" aria-pressed="false">7 j</button>
     </div>
     <button class="icone" id="btn-vue" aria-label="Mode journal" title="Mode journal"><svg><use href="#i-cartes"/></svg></button>
-    <button class="icone" id="btn-deco" aria-label="Se déconnecter" title="Se déconnecter"><svg><use href="#i-sortie"/></svg></button>
+    <button class="icone" id="btn-reglages" aria-label="Paramètres" title="Paramètres"><svg><use href="#i-reglages"/></svg></button>
   </header>
+  <div class="outils" id="outils">
+    <button class="bascule" id="b-lus" aria-pressed="false">Masquer lus</button>
+    <button class="bascule" id="b-rejetes" aria-pressed="false">Masquer 👎</button>
+    <span class="masques" id="masques"></span>
+    <button class="icone" id="b-loupe" aria-label="Rechercher" aria-expanded="false" title="Rechercher"><svg><use href="#i-loupe"/></svg></button>
+    <div class="recherche cache" id="zone-recherche">
+      <input type="search" id="recherche" placeholder="Rechercher un mot-clé…" aria-label="Rechercher dans les articles" autocomplete="off">
+    </div>
+  </div>
   <div class="alerte cache" id="alerte"></div>
+  <div class="alerte cache" id="fraicheur"></div>
 
   <main id="accueil">
     <section class="essentiel cache" id="essentiel"></section>
@@ -352,6 +427,29 @@
   </div>
 </div>
 
+<div id="reglages" class="cache" role="dialog" aria-modal="true" aria-labelledby="reglages-titre">
+  <div class="poignee"></div>
+  <h3 id="reglages-titre">Paramètres</h3>
+  <h4>Thèmes de recherche</h4>
+  <ul class="liste-reglages" id="liste-themes"></ul>
+  <form class="ligne" id="form-theme" autocomplete="off">
+    <input id="nouveau-theme" maxlength="60" placeholder="Ajouter un thème" aria-label="Nouveau thème">
+    <button class="btn principal" type="submit">Ajouter</button>
+  </form>
+  <div class="msg" id="msg-theme" role="alert"></div>
+  <p class="note">Pris en compte à la prochaine mise à jour.</p>
+  <h4>Zone géographique</h4>
+  <p class="note" id="resume-zone"></p>
+  <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
+  <div class="liste-zone" id="liste-zone"></div>
+  <div class="actions">
+    <button class="btn" id="btn-deco"><svg width="18" height="18"><use href="#i-sortie"/></svg>Se déconnecter</button>
+    <button class="btn principal" id="btn-reglages-fermer">Fermer</button>
+  </div>
+</div>
+<button id="bulle" class="cache" type="button">+ Ajouter aux thèmes</button>
+<div id="toast" class="cache" role="status" aria-live="polite"></div>
+
 <div id="demarrage" class="chargement" style="min-height:100vh">Chargement…</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
@@ -359,19 +457,48 @@
 const SUPABASE_URL = "https://wdngyuonaseyvlgiwznu.supabase.co";
 const SUPABASE_CLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkbmd5dW9uYXNleXZsZ2l3em51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMzkwMDEsImV4cCI6MjExMDcxNTAwMX0.JB38j-yZ1IFhYYB1D9VPRz4B5mlAJAgDJ3jCMqEnOgk";
 const LIMITE = 500;
-const COLONNES = "id,url,source,langue,titre,titre_original,resume,theme,score,a_la_une,publie_le,edition,image,contenu_traduit";
+const COLONNES = "id,url,source,langue,titre,titre_original,resume,theme,score,a_la_une,publie_le,edition,image,contenu_traduit,sujet,payant,departements,lieux";
 const RAISONS = {
   "1": ["Sujet prioritaire pour moi", "Utile pour le travail", "Bien expliqué", "Information exclusive", "Source fiable"],
   "-1": ["Hors sujet", "Déjà vu / doublon", "Trop technique", "Trop superficiel", "Source peu fiable", "Pas d'intérêt pour la France"]
 };
 const LANGUES = { en: "l'anglais", de: "l'allemand", es: "l'espagnol", it: "l'italien", nl: "le néerlandais", pt: "le portugais" };
 
+const BONUS_ZONE = 25;
+// Régions (code INSEE) et leurs départements : « code nom|code nom… »
+const REGIONS = [
+  ["84", "Auvergne-Rhône-Alpes", "01 Ain|03 Allier|07 Ardèche|15 Cantal|26 Drôme|38 Isère|42 Loire|43 Haute-Loire|63 Puy-de-Dôme|69 Rhône|73 Savoie|74 Haute-Savoie"],
+  ["27", "Bourgogne-Franche-Comté", "21 Côte-d'Or|25 Doubs|39 Jura|58 Nièvre|70 Haute-Saône|71 Saône-et-Loire|89 Yonne|90 Territoire de Belfort"],
+  ["53", "Bretagne", "22 Côtes-d'Armor|29 Finistère|35 Ille-et-Vilaine|56 Morbihan"],
+  ["24", "Centre-Val de Loire", "18 Cher|28 Eure-et-Loir|36 Indre|37 Indre-et-Loire|41 Loir-et-Cher|45 Loiret"],
+  ["94", "Corse", "2A Corse-du-Sud|2B Haute-Corse"],
+  ["44", "Grand Est", "08 Ardennes|10 Aube|51 Marne|52 Haute-Marne|54 Meurthe-et-Moselle|55 Meuse|57 Moselle|67 Bas-Rhin|68 Haut-Rhin|88 Vosges"],
+  ["32", "Hauts-de-France", "02 Aisne|59 Nord|60 Oise|62 Pas-de-Calais|80 Somme"],
+  ["11", "Île-de-France", "75 Paris|77 Seine-et-Marne|78 Yvelines|91 Essonne|92 Hauts-de-Seine|93 Seine-Saint-Denis|94 Val-de-Marne|95 Val-d'Oise"],
+  ["28", "Normandie", "14 Calvados|27 Eure|50 Manche|61 Orne|76 Seine-Maritime"],
+  ["75", "Nouvelle-Aquitaine", "16 Charente|17 Charente-Maritime|19 Corrèze|23 Creuse|24 Dordogne|33 Gironde|40 Landes|47 Lot-et-Garonne|64 Pyrénées-Atlantiques|79 Deux-Sèvres|86 Vienne|87 Haute-Vienne"],
+  ["76", "Occitanie", "09 Ariège|11 Aude|12 Aveyron|30 Gard|31 Haute-Garonne|32 Gers|34 Hérault|46 Lot|48 Lozère|65 Hautes-Pyrénées|66 Pyrénées-Orientales|81 Tarn|82 Tarn-et-Garonne"],
+  ["52", "Pays de la Loire", "44 Loire-Atlantique|49 Maine-et-Loire|53 Mayenne|72 Sarthe|85 Vendée"],
+  ["93", "Provence-Alpes-Côte d'Azur", "04 Alpes-de-Haute-Provence|05 Hautes-Alpes|06 Alpes-Maritimes|13 Bouches-du-Rhône|83 Var|84 Vaucluse"],
+  ["01", "Guadeloupe", "971 Guadeloupe"],
+  ["02", "Martinique", "972 Martinique"],
+  ["03", "Guyane", "973 Guyane"],
+  ["04", "La Réunion", "974 La Réunion"],
+  ["06", "Mayotte", "976 Mayotte"]
+].map(([code, nom, deps]) => ({
+  code, nom, deps: deps.split("|").map((d) => { const i = d.indexOf(" "); return { code: d.slice(0, i), nom: d.slice(i + 1) }; })
+}));
+const NOM_DEP = new Map(REGIONS.flatMap((r) => r.deps.map((d) => [d.code, d.nom])));
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 const $ = (id) => document.getElementById(id);
 const etat = {
   articles: [], votes: new Map(), synthese: null, jours: 1, theme: null,
-  vue: "accueil", liste: [], index: 0, ouvert: null, feuille: null
+  vue: "accueil", liste: [], index: 0, ouvert: null, feuille: null,
+  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false },
+  prefsChargees: false, recherche: "", zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null
 };
+let zoneDeps = new Set();
 
 /* ---------- Utilitaires ---------- */
 function memoire(cle, valeur) {
@@ -380,11 +507,73 @@ function memoire(cle, valeur) {
     localStorage.setItem(cle, valeur);
   } catch (e) { return null; }
 }
-const lus = new Set((() => { try { return JSON.parse(memoire("lus") || "[]"); } catch (e) { return []; } })());
+/* Articles lus : table « lectures ». Repli local « lus_attente » si l'écriture échoue ; « lus » = ancien stockage, migré une fois. */
+const lus = new Set();
+function lireLocal(cle) {
+  try { const t = JSON.parse(memoire(cle) || "[]"); return Array.isArray(t) ? t.filter(Number.isInteger) : []; } catch (e) { return []; }
+}
+function oublier(cle) { try { localStorage.removeItem(cle); } catch (e) { /* stockage indisponible */ } }
+const cleAttente = (uid = sessionCourante) => "lus_attente:" + uid;
+// true = traité (les articles supprimés, rejetés par la clé étrangère 23503, sont abandonnés) ; false = à réessayer (réseau, etc.)
+async function envoyerLectures(ids) {
+  if (!ids.length || !sessionCourante) return false;
+  const envoyer = (lot) => sb.from("lectures").upsert(
+    lot.map((id) => ({ user_id: sessionCourante, article_id: id })), { onConflict: "user_id,article_id", ignoreDuplicates: true });
+  try {
+    for (let i = 0; i < ids.length; i += 200) {
+      const lot = ids.slice(i, i + 200), { error } = await envoyer(lot);
+      if (!error) continue;
+      if (error.code !== "23503") return false;
+      for (const id of lot) {
+        const r = await envoyer([id]);
+        if (r.error && r.error.code !== "23503") return false;
+      }
+    }
+    return true;
+  } catch (e) { return false; }
+}
 function marquerLu(id) {
-  if (lus.has(id)) return;
+  if (lus.has(id) || !sessionCourante) return;
   lus.add(id);
-  memoire("lus", JSON.stringify([...lus].slice(-3000)));
+  const cle = cleAttente();
+  envoyerLectures([id]).then((ok) => {
+    if (ok) return;
+    const t = lireLocal(cle);
+    if (!t.includes(id)) { t.push(id); memoire(cle, JSON.stringify(t.slice(-3000))); }
+  });
+}
+let synchroEnCours = false;
+async function synchroniserLocal() {
+  if (synchroEnCours) return;
+  synchroEnCours = true;
+  try {
+    for (const cle of ["lus", cleAttente()]) {
+      const ids = lireLocal(cle);
+      if (!ids.length) { oublier(cle); continue; }
+      if (!(await envoyerLectures(ids))) continue;
+      const reste = lireLocal(cle).filter((x) => !ids.includes(x));
+      if (reste.length) memoire(cle, JSON.stringify(reste)); else oublier(cle);
+    }
+  } finally { synchroEnCours = false; }
+}
+async function chargerLectures(articleIds) {
+  const res = new Set();
+  try {
+    for (let i = 0; i < articleIds.length; i += 200) {
+      const r = await sb.from("lectures").select("article_id").eq("user_id", sessionCourante).in("article_id", articleIds.slice(i, i + 200));
+      if (r.error) return null;
+      for (const x of r.data) res.add(x.article_id);
+    }
+  } catch (e) { return null; }
+  return res;
+}
+const normaliser = (t) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+let minuteurToast = null;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.remove("cache");
+  clearTimeout(minuteurToast);
+  minuteurToast = setTimeout(() => t.classList.add("cache"), 2600);
 }
 function echapper(t) {
   return String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -440,13 +629,20 @@ sb.auth.onAuthStateChange((evt, session) => setTimeout(() => demarrer(session), 
 async function demarrer(session) {
   const uid = session?.user?.id ?? null;
   if (uid === sessionCourante && uid !== null) return;
+  const ancien = sessionCourante;
   sessionCourante = uid;
   if (!session) {
     if (etat.ouvert) fermerLecteur();
     if (etat.feuille) fermerFeuille();
+    if (etat.reglages) masquerReglages();
+    $("bulle").classList.add("cache");
+    if (ancien) oublier(cleAttente(ancien));
+    lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; etat.zoneSeule = false;
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
   }
+  lus.clear();
+  etat.prefsChargees = false; majBascules();
   afficher("demarrage");
   const { data, error } = await sb.rpc("est_lecteur");
   if (error || !data) { afficher("attente"); return; }
@@ -469,13 +665,16 @@ async function charger() {
     const d = new Date(); d.setDate(d.getDate() - 6);
     requete = requete.gte("edition", d.toISOString().slice(0, 10));
   }
-  const [arts, exe, syn, rev, props] = await Promise.all([
+  const versionLancee = versionPrefs;
+  const [arts, exe, syn, rev, props, exeOk, pr] = await Promise.all([
     requete.order("edition", { ascending: false }).order("a_la_une", { ascending: false })
       .order("score", { ascending: false }).limit(LIMITE),
     sb.from("executions").select("debut,fin,statut").order("debut", { ascending: false }).limit(1),
     derniere ? sb.from("syntheses").select("edition,points").eq("edition", derniere).maybeSingle() : Promise.resolve({ data: null }),
     sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
-    sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20)
+    sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20),
+    sb.from("executions").select("debut,fin").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
+    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes").eq("user_id", sessionCourante).maybeSingle()
   ]);
   if (moi !== numeroRequete) return;
   if (arts.error) { $("grille").innerHTML = `<div class="chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
@@ -487,14 +686,22 @@ async function charger() {
       .eq("user_id", sessionCourante).in("article_id", ids.slice(i, i + 200));
     for (const x of v.data ?? []) votes.set(x.article_id, x);
   }
+  const serveurLus = await chargerLectures(ids);
   if (moi !== numeroRequete) return;
   etat.articles = arts.data;
+  cacheTexte.clear();
   etat.synthese = syn.data;
   etat.revue = rev.data ?? null;
   etat.propositions = props.data ?? [];
   etat.votes = votes;
+  if (pr.error) { etat.prefsChargees = false; majBascules(); }
+  else if (versionLancee === versionPrefs) { etat.prefsChargees = true; appliquerPrefs(pr.data); }
+  for (const id of [...lireLocal("lus"), ...lireLocal(cleAttente())]) lus.add(id);
+  if (serveurLus) for (const id of serveurLus) lus.add(id);
+  synchroniserLocal();
 
   afficherMaj(exe.data?.[0], arts.data.length >= LIMITE, derniere);
+  afficherFraicheur(exeOk.data?.[0]);
   dernierChargement = Date.now();
   rendreAccueil();
   if (etat.vue === "journal") ouvrirJournal(0, false);
@@ -504,7 +711,7 @@ async function charger() {
 let dernierChargement = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible" || !sessionCourante) return;
-  if (etat.vue !== "accueil" || etat.ouvert || etat.feuille) return;
+  if (etat.vue !== "accueil" || etat.ouvert || etat.feuille || etat.reglages) return;
   if (Date.now() - dernierChargement > 10 * 60e3) charger();
 });
 
@@ -515,16 +722,122 @@ function afficherMaj(exe, tronque, derniere) {
     const ageH = (Date.now() - new Date(exe.debut).getTime()) / 36e5;
     if (exe.statut === "echec") txt += "⚠ La dernière mise à jour a échoué. Les articles affichés peuvent dater.";
     else if (exe.statut === "en_cours" && ageH > 1.5) txt += "⚠ La dernière mise à jour ne s'est pas terminée.";
-    else if (ageH > 30) txt += "⚠ Aucune mise à jour depuis plus d'un jour.";
   } else $("maj").textContent = "";
   $("alerte").textContent = txt;
   $("alerte").classList.toggle("cache", !txt);
   $("titre-liste").textContent = etat.jours === 1 && derniere ? "Articles du " + dateLongue(derniere).replace(/^\w+ /, "") : "Les 7 derniers jours";
 }
 
+function afficherFraicheur(ok) {
+  const t = ok ? new Date(ok.fin || ok.debut).getTime() : NaN;
+  const h = (Date.now() - t) / 36e5;
+  const txt = h > 26 ? `Pas de nouvelle édition depuis ${heure(ok.fin || ok.debut)}${h >= 48 ? ` (${Math.floor(h / 24)} jours)` : ""}.` : "";
+  $("fraicheur").textContent = txt;
+  $("fraicheur").classList.toggle("cache", !txt);
+}
+
+/* ---------- Préférences ---------- */
+function appliquerPrefs(r) {
+  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false };
+  if (r) {
+    p.themes = (Array.isArray(r.themes) ? r.themes : []).filter((t) => t && typeof t.nom === "string" && t.nom.trim())
+      .map((t) => ({ nom: t.nom.trim().slice(0, 60), categorie: !!t.categorie }));
+    p.zones = (Array.isArray(r.zones) ? r.zones : []).filter((z) => z && (z.type === "departement" || z.type === "region") && z.code != null)
+      .map((z) => ({ type: z.type, code: String(z.code), nom: String(z.nom ?? z.code) }));
+    p.masquer_lus = !!r.masquer_lus; p.masquer_rejetes = !!r.masquer_rejetes;
+  }
+  etat.prefs = p;
+  recalcZone();
+  majBascules();
+}
+function recalcZone() {
+  zoneDeps = new Set();
+  for (const z of etat.prefs.zones) {
+    if (z.type === "region") REGIONS.find((r) => r.code === z.code)?.deps.forEach((d) => zoneDeps.add(d.code));
+    else zoneDeps.add(z.code);
+  }
+  if (!zoneDeps.size) etat.zoneSeule = false;
+}
+let fileSauvegarde = Promise.resolve(), versionPrefs = 0;
+// N'envoie que les colonnes modifiées
+function sauverPrefs(...champs) {
+  etat.prefsModif = true;
+  versionPrefs++;
+  fileSauvegarde = fileSauvegarde.then(async () => {
+    if (!sessionCourante) return;
+    const ligne = { user_id: sessionCourante, maj_le: new Date().toISOString() };
+    for (const c of champs) ligne[c] = etat.prefs[c];
+    try {
+      const { error } = await sb.from("preferences").upsert(ligne, { onConflict: "user_id" });
+      if (error) toast("Préférences non enregistrées : " + error.message);
+    } catch (e) { toast("Préférences non enregistrées (connexion ?)"); }
+  });
+}
+function majBascules() {
+  $("b-lus").setAttribute("aria-pressed", String(etat.prefs.masquer_lus));
+  $("b-rejetes").setAttribute("aria-pressed", String(etat.prefs.masquer_rejetes));
+  for (const id of ["b-lus", "b-rejetes", "btn-reglages"]) $(id).disabled = !etat.prefsChargees;
+}
+
 /* ---------- Accueil ---------- */
+const dansZone = (a) => zoneDeps.size > 0 && Array.isArray(a.departements) && a.departements.some((d) => zoneDeps.has(String(d)));
+function lieuZone(a) {
+  if (!dansZone(a)) return "";
+  const d = String(a.departements.find((x) => zoneDeps.has(String(x))));
+  return NOM_DEP.has(d) ? `${NOM_DEP.get(d)} (${d})` : d;
+}
+function badgesArticle(a) {
+  const z = lieuZone(a);
+  return (a.payant === true ? '<span class="badge payant">🔒 Payant</span>' : "") + (z ? `<span class="badge zone">📍 ${echapper(z)}</span>` : "");
+}
+const cacheTexte = new Map();
+function texteRecherche(a) {
+  let t = cacheTexte.get(a.id);
+  if (t === undefined) {
+    t = normaliser([a.titre, a.titre_original, a.resume, a.source, a.theme, ...(Array.isArray(a.lieux) ? a.lieux : [])].join(" "));
+    cacheTexte.set(a.id, t);
+  }
+  return t;
+}
+// Article principal d'un sujet : non payant d'abord, puis meilleur score, puis plus récent
+const cmpPrincipal = (x, y) => (x.payant === true) - (y.payant === true) || (y.score || 0) - (x.score || 0)
+  || (new Date(y.publie_le || 0) - new Date(x.publie_le || 0));
+function regrouper(tab) {
+  const groupes = new Map();
+  for (const a of tab) if (a.sujet) { if (!groupes.has(a.sujet)) groupes.set(a.sujet, []); groupes.get(a.sujet).push(a); }
+  const principal = new Map();
+  for (const [sujet, g] of groupes) principal.set(sujet, g.slice().sort(cmpPrincipal)[0]);
+  const nb = new Map();
+  for (const [sujet, g] of groupes) nb.set(principal.get(sujet).id, g.length - 1);
+  return { liste: tab.filter((a) => !a.sujet || principal.get(a.sujet) === a), nb, groupes };
+}
+// Filtres (thème, zone, recherche), tri avec bonus de zone, masquage, puis regroupement par sujet
 function listeFiltree() {
-  return etat.theme ? etat.articles.filter((a) => (a.theme || "Autre") === etat.theme) : etat.articles;
+  const mots = normaliser(etat.recherche).split(" ").filter(Boolean);
+  const pts = (a) => (a.score || 0) + (dansZone(a) ? BONUS_ZONE : 0);
+  const base = etat.articles
+    .filter((a) => (!etat.theme || (a.theme || "Autre") === etat.theme) && (!etat.zoneSeule || dansZone(a))
+      && mots.every((m) => texteRecherche(a).includes(m)))
+    .sort((x, y) => (y.edition || "").localeCompare(x.edition || "") || (y.a_la_une ? 1 : 0) - (x.a_la_une ? 1 : 0) || pts(y) - pts(x));
+  // Les groupes sont formés sur la base filtrée, puis masqués en entier :
+  // « rejetés » si un membre a reçu 👎, « lus » si l'article principal a été lu
+  const r = regrouper(base);
+  const rejete = (a) => etat.votes.get(a.id)?.avis === -1;
+  const liste = r.liste.filter((p) => !(etat.prefs.masquer_lus && lus.has(p.id))
+    && !(etat.prefs.masquer_rejetes && (p.sujet ? r.groupes.get(p.sujet).some(rejete) : rejete(p))));
+  etat.nbAutres = r.nb;
+  etat.masques = r.liste.length - liste.length;
+  return liste;
+}
+function majOutils() {
+  $("masques").textContent = etat.masques ? `${etat.masques} masqué${etat.masques > 1 ? "s" : ""}` : "";
+  document.documentElement.style.setProperty("--outils", $("outils").offsetHeight + "px");
+}
+function majListes(force = false) {
+  if (etat.vue !== "journal") { rendreListe(); return; }
+  const avant = etat.liste.map((a) => a.id).join();
+  if (!force && listeFiltree().map((a) => a.id).join() === avant) { majOutils(); return; }
+  ouvrirJournal(0, false);
 }
 
 function rendreAccueil() {
@@ -554,28 +867,41 @@ function rendreAccueil() {
     bloc.classList.remove("cache");
   } else bloc.classList.add("cache");
   rendrePropositions();
+  rendreListe();
+}
 
+function rendreListe() {
   // Filtres par thème
-  const compte = new Map();
-  for (const a of etat.articles) compte.set(a.theme || "Autre", (compte.get(a.theme || "Autre") || 0) + 1);
+  const parTheme = new Map();
+  for (const a of etat.articles) { const t = a.theme || "Autre"; if (!parTheme.has(t)) parTheme.set(t, []); parTheme.get(t).push(a); }
+  const compte = new Map([...parTheme].map(([t, tab]) => [t, regrouper(tab).liste.length]));
   if (etat.theme && !compte.has(etat.theme)) etat.theme = null;
   const themes = [...compte.entries()].sort((x, y) => (x[0] === "Autre") - (y[0] === "Autre") || y[1] - x[1]);
-  $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme}">Tous · ${etat.articles.length}</button>` +
-    themes.map(([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`).join("");
+  // Catégories personnelles sans article : affichées grisées
+  const presents = new Set(themes.map(([t]) => normaliser(t)));
+  const vides = etat.prefs.themes.filter((t) => t.categorie && !presents.has(normaliser(t.nom)));
+  const nbZone = zoneDeps.size ? regrouper(etat.articles.filter(dansZone)).liste.length : 0;
+  if (!zoneDeps.size) etat.zoneSeule = false;
+  $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
+    (zoneDeps.size ? `<button data-zone="1" aria-pressed="${etat.zoneSeule}">📍 Ma zone · ${nbZone}</button>` : "") +
+    themes.map(([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`).join("") +
+    vides.map((t) => `<button disabled aria-disabled="true" title="Aucun article pour l'instant">${echapper(t.nom)} · 0</button>`).join("");
 
   // Vignettes
   const liste = listeFiltree();
+  majOutils();
   $("grille").innerHTML = liste.length ? liste.map((a, i) => {
-    const v = etat.votes.get(a.id);
+    const v = etat.votes.get(a.id), n = etat.nbAutres.get(a.id) || 0;
     return `<button class="vignette${lus.has(a.id) ? " lu" : ""}" data-i="${i}">
       ${visuel(a)}
       <div class="txt">
-        <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}
+        <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
           ${v ? `<span class="badge avis-${v.avis}">${v.avis > 0 ? "Aimé" : "Pas aimé"}</span>` : ""}
           <span>${[echapper(a.source), heure(a.publie_le)].filter(Boolean).join(" · ")}</span></div>
         <h3>${echapper(a.titre)}</h3>
+        ${n ? `<div class="meta autres">+${n} autre${n > 1 ? "s" : ""} source${n > 1 ? "s" : ""}</div>` : ""}
       </div></button>`;
-  }).join("") : '<div class="chargement">Aucun article pour cette période.</div>';
+  }).join("") : `<div class="chargement">${etat.articles.length ? "Aucun article ne correspond à vos filtres." : "Aucun article pour cette période."}</div>`;
 }
 
 // Propositions de retrait de source : rien n'est retiré sans l'accord du lecteur
@@ -607,9 +933,10 @@ $("propositions").addEventListener("click", async (e) => {
 });
 
 $("filtres").addEventListener("click", (e) => {
-  const b = e.target.closest("button"); if (!b) return;
-  etat.theme = b.dataset.theme || null;
-  rendreAccueil();
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.zone) etat.zoneSeule = !etat.zoneSeule;
+  else { etat.theme = b.dataset.theme || null; etat.zoneSeule = false; }
+  rendreListe();
 });
 $("grille").addEventListener("click", (e) => {
   const b = e.target.closest(".vignette"); if (!b) return;
@@ -627,10 +954,11 @@ function fiche(a, i) {
   return `<section class="page" data-i="${i}"><article class="fiche">
     ${visuel(a, imageSure(a.image) ? "" : "petite")}
     <div class="corps">
-      <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}
+      <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
         <span style="color:var(--accent);font-weight:600">${echapper(a.theme || "Actualité")}</span></div>
       <h2>${echapper(a.titre)}</h2>
-      <div class="meta" style="margin-bottom:10px">${[echapper(a.source), heure(a.publie_le), a.langue && a.langue !== "fr" ? "traduit" : ""].filter(Boolean).join(" · ")}</div>
+      <div class="meta" style="margin-bottom:10px">${[echapper(a.source), heure(a.publie_le), a.langue && a.langue !== "fr" ? "traduit" : "",
+        etat.nbAutres.get(a.id) ? `+${etat.nbAutres.get(a.id)} autre${etat.nbAutres.get(a.id) > 1 ? "s" : ""} source${etat.nbAutres.get(a.id) > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ")}</div>
       <p class="resume">${echapper(a.resume)}</p>
     </div>
     <div class="pied">
@@ -644,6 +972,7 @@ function fiche(a, i) {
 function ouvrirJournal(index, historique = true) {
   etat.liste = listeFiltree();
   const n = etat.liste.length;
+  majOutils();
   $("journal").innerHTML = etat.liste.map(fiche).join("") +
     `<section class="page"><div class="fin"><h2>${n ? "Vous avez tout vu" : "Rien de neuf"}</h2>
      <p>${n} article${n > 1 ? "s" : ""}.</p><button class="btn" id="vers-accueil">Retour à l'accueil</button></div></section>`;
@@ -686,8 +1015,8 @@ function aller(delta) { const p = $("journal"); p.scrollTo({ left: (etat.index +
 $("prec").onclick = () => aller(-1);
 $("suiv").onclick = () => aller(1);
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { if (etat.feuille) fermerFeuille(); else if (etat.ouvert || etat.vue === "journal") history.back(); return; }
-  if (etat.vue !== "journal" || etat.ouvert || etat.feuille) return;
+  if (e.key === "Escape") { if (etat.feuille) fermerFeuille(); else if (etat.reglages) fermerReglages(); else if (etat.ouvert || etat.vue === "journal") history.back(); return; }
+  if (etat.vue !== "journal" || etat.ouvert || etat.feuille || etat.reglages || e.target.matches("input, textarea")) return;
   if (e.key === "ArrowRight") aller(1);
   if (e.key === "ArrowLeft") aller(-1);
 });
@@ -701,17 +1030,17 @@ $("journal").addEventListener("click", (e) => {
 });
 
 /* ---------- Lecteur ---------- */
-async function ouvrirLecteur(a) {
-  if (etat.ouvert) return;
+async function ouvrirLecteur(a, remplace = false) {
+  if (etat.ouvert && !remplace) return;
   etat.ouvert = a;
   marquerLu(a.id);
-  history.pushState({ vue: "lecteur" }, "");
+  if (remplace) history.replaceState({ vue: "lecteur" }, ""); else history.pushState({ vue: "lecteur" }, "");
   const etranger = a.langue && a.langue !== "fr";
   $("l-site").href = urlSure(a.url);
   const lt = $("l-traduire");
   lt.href = "https://translate.google.com/translate?sl=auto&tl=fr&u=" + encodeURIComponent(a.url);
   lt.classList.add("cache");
-  $("lecture").innerHTML = enteteLecture(a) + '<div class="texte"><p class="indispo">Chargement du texte…</p></div>';
+  $("lecture").innerHTML = enteteLecture(a) + '<div class="texte"><p class="indispo">Chargement du texte…</p></div>' + memeSujet(a);
   majBarreVote();
   $("lecteur").classList.remove("cache");
   $("lecteur").scrollTop = 0;
@@ -733,10 +1062,23 @@ async function ouvrirLecteur(a) {
 function enteteLecture(a) {
   return `${imageSure(a.image) ? visuel(a) : ""}
     <h1>${echapper(a.titre)}</h1>
-    <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}
+    <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
       <span>${[echapper(a.source), heure(a.publie_le), echapper(a.theme || "")].filter(Boolean).join(" · ")}</span></div>
     <p class="resume-l">${echapper(a.resume)}</p>`;
 }
+function memeSujet(a) {
+  if (!a.sujet) return "";
+  const autres = etat.articles.filter((x) => x.sujet === a.sujet && x.id !== a.id).sort(cmpPrincipal);
+  if (!autres.length) return "";
+  return `<section class="meme-sujet" aria-label="Sur le même sujet"><h2>Sur le même sujet</h2>` +
+    autres.map((x) => `<button class="lien-sujet" data-sujet="${x.id}"><span class="src">${echapper(x.source)}</span>
+      <span class="tit">${echapper(x.titre)}</span>${x.payant === true ? '<span class="badge payant">🔒 Payant</span>' : ""}</button>`).join("") + "</section>";
+}
+$("lecture").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-sujet]"); if (!b) return;
+  const x = etat.articles.find((y) => y.id === +b.dataset.sujet);
+  if (x) ouvrirLecteur(x, true);
+});
 function majBarreVote() {
   const a = etat.ouvert; if (!a) return;
   const v = etat.votes.get(a.id);
@@ -748,13 +1090,16 @@ $("barre-vote").addEventListener("click", (e) => { const b = e.target.closest(".
 function fermerLecteur() {
   etat.ouvert = null;
   $("lecteur").classList.add("cache");
+  $("bulle").classList.add("cache");
   document.body.style.overflow = etat.vue === "journal" ? "hidden" : "";
+  if (etat.vue === "accueil") rendreListe();
 }
 $("btn-retour").onclick = () => history.back();
 
 /* ---------- Historique (bouton retour du téléphone) ---------- */
 window.addEventListener("popstate", (e) => {
   if (etat.feuille) { fermerFeuille(); history.pushState(e.state, ""); return; }
+  if (etat.reglages) { masquerReglages(); return; }
   if (etat.ouvert) { fermerLecteur(); return; }
   if (etat.vue === "journal" && e.state?.vue !== "journal") fermerJournal();
   else if (etat.vue === "accueil" && e.state?.vue === "journal") ouvrirJournal(0, false);
@@ -786,7 +1131,7 @@ $("raisons").addEventListener("click", (e) => {
   b.setAttribute("aria-pressed", String(etat.feuille.raisons.has(r)));
 });
 function fermerFeuille() { $("voile").classList.add("cache"); $("feuille").classList.add("cache"); etat.feuille = null; }
-$("voile").onclick = fermerFeuille;
+$("voile").onclick = () => { if (etat.reglages) fermerReglages(); else fermerFeuille(); };
 
 $("btn-enregistrer").onclick = async () => {
   const f = etat.feuille; if (!f) return;
@@ -816,6 +1161,148 @@ function apresVote(id) {
   }
   if (etat.vue === "accueil") rendreAccueil();
 }
+
+/* ---------- Masquage et recherche ---------- */
+$("b-lus").onclick = () => { etat.prefs.masquer_lus = !etat.prefs.masquer_lus; majBascules(); sauverPrefs("masquer_lus"); majListes(); };
+$("b-rejetes").onclick = () => { etat.prefs.masquer_rejetes = !etat.prefs.masquer_rejetes; majBascules(); sauverPrefs("masquer_rejetes"); majListes(); };
+let minuteurRecherche = null;
+$("recherche").addEventListener("input", () => {
+  clearTimeout(minuteurRecherche);
+  minuteurRecherche = setTimeout(() => { etat.recherche = $("recherche").value; majListes(); }, 150);
+});
+$("b-loupe").onclick = () => {
+  const ouvrir = $("zone-recherche").classList.contains("cache");
+  $("zone-recherche").classList.toggle("cache", !ouvrir);
+  $("b-loupe").setAttribute("aria-expanded", String(ouvrir));
+  if (ouvrir) $("recherche").focus();
+  else if (etat.recherche || $("recherche").value) { $("recherche").value = ""; etat.recherche = ""; majListes(); }
+  else majOutils();
+};
+new ResizeObserver(() => document.documentElement.style.setProperty("--outils", $("outils").offsetHeight + "px")).observe($("outils"));
+
+/* ---------- Paramètres ---------- */
+function ajouterTheme(brut, categorie = false) {
+  const nom = String(brut).replace(/\s+/g, " ").trim();
+  const th = etat.prefs.themes;
+  if (!etat.prefsChargees) return { ok: false, msg: "Préférences indisponibles pour le moment." };
+  if (!nom) return { ok: false, msg: "Saisissez un thème." };
+  if (nom.length > 60) return { ok: false, msg: "60 caractères au maximum." };
+  if (th.some((t) => normaliser(t.nom) === normaliser(nom))) return { ok: false, msg: "Ce thème existe déjà." };
+  if (th.length >= 50) return { ok: false, msg: "50 thèmes au maximum." };
+  th.push({ nom, categorie });
+  sauverPrefs("themes");
+  return { ok: true, msg: `« ${nom} » ajouté aux thèmes` };
+}
+function rendreThemes() {
+  $("liste-themes").innerHTML = etat.prefs.themes.length
+    ? etat.prefs.themes.map((t, i) => `<li><span class="nom">${echapper(t.nom)}</span>
+        <label class="coche"><input type="checkbox" data-cat="${i}"${t.categorie ? " checked" : ""}> aussi comme catégorie</label>
+        <button class="icone" data-suppr="${i}" aria-label="Supprimer le thème ${echapper(t.nom)}">✕</button></li>`).join("")
+    : '<li class="note">Aucun thème personnel.</li>';
+}
+$("form-theme").onsubmit = (e) => {
+  e.preventDefault();
+  const r = ajouterTheme($("nouveau-theme").value);
+  $("msg-theme").textContent = r.ok ? "" : r.msg;
+  if (r.ok) { $("nouveau-theme").value = ""; rendreThemes(); }
+};
+$("liste-themes").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-suppr]"); if (!b) return;
+  etat.prefs.themes.splice(+b.dataset.suppr, 1);
+  sauverPrefs("themes"); rendreThemes();
+});
+$("liste-themes").addEventListener("change", (e) => {
+  const c = e.target.closest("[data-cat]"); if (!c) return;
+  const t = etat.prefs.themes[+c.dataset.cat];
+  if (t) { t.categorie = c.checked; sauverPrefs("themes"); }
+});
+function rendreZone() {
+  const q = normaliser($("filtre-zone").value);
+  const selR = new Set(etat.prefs.zones.filter((z) => z.type === "region").map((z) => z.code));
+  const selD = new Set(etat.prefs.zones.filter((z) => z.type === "departement").map((z) => z.code));
+  let html = "";
+  for (const r of REGIONS) {
+    const rOk = !q || normaliser(r.nom).includes(q);
+    const deps = r.deps.filter((d) => rOk || normaliser(d.code + " " + d.nom).includes(q));
+    if (!rOk && !deps.length) continue;
+    const tout = selR.has(r.code);
+    html += `<div class="region"><label class="coche"><input type="checkbox" data-zone="region:${r.code}"${tout ? " checked" : ""}><strong>${echapper(r.nom)}</strong></label><div class="deps">` +
+      deps.map((d) => `<label class="coche"><input type="checkbox" data-zone="departement:${d.code}"${tout || selD.has(d.code) ? " checked" : ""}${tout ? " disabled" : ""}> ${echapper(d.code)} ${echapper(d.nom)}</label>`).join("") +
+      "</div></div>";
+  }
+  const zone = $("liste-zone"), haut = zone.scrollTop;
+  zone.innerHTML = html || '<p class="note">Aucun résultat.</p>';
+  zone.scrollTop = haut;
+  const z = etat.prefs.zones;
+  $("resume-zone").textContent = z.length ? z.length + " sélection" + (z.length > 1 ? "s" : "") + " : " + z.map((x) => x.nom).join(", ")
+    : "Aucune zone choisie. Les articles de votre zone seront signalés et remontés dans l'ordre.";
+}
+$("filtre-zone").addEventListener("input", rendreZone);
+$("liste-zone").addEventListener("change", (e) => {
+  const c = e.target.closest("[data-zone]"); if (!c) return;
+  const [type, code] = c.dataset.zone.split(":");
+  const z = etat.prefs.zones, i = z.findIndex((x) => x.type === type && x.code === code);
+  if (c.checked && i < 0) z.push({ type, code, nom: type === "region" ? REGIONS.find((r) => r.code === code)?.nom ?? code : NOM_DEP.get(code) ?? code });
+  else if (!c.checked && i >= 0) z.splice(i, 1);
+  recalcZone(); sauverPrefs("zones"); rendreZone();
+});
+function ouvrirReglages() {
+  if (etat.reglages || !etat.prefsChargees) return;
+  etat.reglages = true; etat.prefsModif = false;
+  $("msg-theme").textContent = ""; $("filtre-zone").value = "";
+  rendreThemes(); rendreZone();
+  history.pushState({ vue: "reglages" }, "");
+  $("voile").classList.remove("cache"); $("reglages").classList.remove("cache");
+}
+function fermerReglages() { if (etat.reglages) history.back(); }
+function masquerReglages() {
+  if (!etat.reglages) return;
+  etat.reglages = false;
+  $("voile").classList.add("cache"); $("reglages").classList.add("cache");
+  if (etat.prefsModif && sessionCourante) { etat.prefsModif = false; majListes(true); }
+}
+$("btn-reglages").onclick = ouvrirReglages;
+$("btn-reglages-fermer").onclick = fermerReglages;
+
+/* ---------- Surligner un passage → thème ---------- */
+let minuteurSel = null, dernierAppuiBulle = 0;
+function selectionValide() {
+  if (!etat.ouvert) return null;
+  const s = getSelection();
+  if (!s || s.isCollapsed || !s.rangeCount) return null;
+  const r = s.getRangeAt(0);
+  if (!$("lecture").contains(r.commonAncestorContainer)) return null;
+  const t = s.toString().replace(/\s+/g, " ").trim();
+  if (t.length < 1 || t.length > 60 || t.split(" ").length > 5) return null;
+  return { texte: t, rect: r.getBoundingClientRect() };
+}
+function majBulle() {
+  if (Date.now() - dernierAppuiBulle < 1500) return;
+  const b = $("bulle"), sel = selectionValide();
+  if (!sel) { b.classList.add("cache"); etat.selection = null; return; }
+  etat.selection = sel.texte;
+  // Mobile : bulle fixe en bas d'écran, loin du menu natif (copier/coller). PC : sous la sélection.
+  const tactile = matchMedia("(pointer: coarse)").matches;
+  b.classList.toggle("flottante", !tactile);
+  b.classList.remove("cache");
+  if (tactile) { b.style.left = b.style.top = ""; return; }
+  const w = b.offsetWidth;
+  let top = sel.rect.bottom + 10;
+  if (top + 48 > innerHeight) top = Math.max(8, sel.rect.top - 54);
+  b.style.left = Math.min(Math.max(8, sel.rect.left + sel.rect.width / 2 - w / 2), innerWidth - w - 8) + "px";
+  b.style.top = top + "px";
+}
+document.addEventListener("selectionchange", () => { clearTimeout(minuteurSel); minuteurSel = setTimeout(majBulle, 200); });
+$("bulle").addEventListener("pointerdown", () => { dernierAppuiBulle = Date.now(); });
+$("bulle").addEventListener("mousedown", (e) => e.preventDefault());
+$("bulle").onclick = () => {
+  const t = etat.selection; if (!t) return;
+  const r = ajouterTheme(t);
+  toast(r.msg);
+  dernierAppuiBulle = 0; etat.selection = null;
+  $("bulle").classList.add("cache");
+  getSelection()?.removeAllRanges();
+};
 </script>
 </body>
 </html>
