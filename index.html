@@ -314,6 +314,13 @@
   .liste-zone .deps .coche { color: var(--doux); }
   #reglages .actions { display: flex; gap: 8px; margin-top: 18px; }
   #reglages .actions .btn { flex: 1; }
+  .liste-reglages .options { grid-column: 1 / -1; grid-row: 2; }
+  .liste-reglages .options .coche { padding: 2px 0; font-size: .85rem; color: var(--doux); }
+  .pastilles { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+  .pastilles button { border: 1px solid var(--filet); border-radius: 999px; padding: 6px 12px; background: var(--surface); color: var(--texte); font-size: .85rem; }
+  .pastilles button:disabled { opacity: .5; }
+  .proches { margin: 2px 0 8px; padding: 8px 12px; border: 1px solid var(--filet); border-radius: 12px; font-size: .85rem; }
+  .proches p { margin: 0 0 6px; color: var(--doux); }
   .liste-principaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); column-gap: 12px; }
   #bienvenue { min-height: 100%; display: grid; place-items: center; padding: 16px; }
   #bienvenue .carte { width: 100%; max-width: 560px; background: var(--surface); padding: 28px 22px; border-radius: 20px; box-shadow: var(--ombre); }
@@ -467,14 +474,18 @@
   <h4>Thèmes principaux</h4>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
-  <h4>Thèmes de recherche</h4>
+  <h4>Mes thèmes personnels</h4>
+  <p class="note">Sujets à privilégier lors de la sélection des articles (sélection commune à tous les lecteurs). Pris en compte à la prochaine mise à jour.</p>
   <ul class="liste-reglages" id="liste-themes"></ul>
   <form class="ligne" id="form-theme" autocomplete="off">
     <input id="nouveau-theme" maxlength="60" placeholder="Ajouter un thème" aria-label="Nouveau thème">
     <button class="btn principal" type="submit">Ajouter</button>
   </form>
   <div class="msg" id="msg-theme" role="alert"></div>
-  <p class="note">Pris en compte à la prochaine mise à jour.</p>
+  <div class="proches cache" id="proches" aria-live="polite"></div>
+  <h4>Suggestions</h4>
+  <p class="note">Thèmes suivis par d'autres lecteurs (anonymes). Touchez pour les suivre.</p>
+  <div class="pastilles" id="suggestions"></div>
   <h4>Zone géographique</h4>
   <p class="note" id="resume-zone"></p>
   <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
@@ -535,7 +546,8 @@ const etat = {
   prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false },
   prefsChargees: false, recherche: "", zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null,
   // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
-  tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0
+  tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
+  perso: [] // thèmes personnels suivis : {id, nom, categorie, partage, actif, mien}
 };
 let zoneDeps = new Set();
 
@@ -678,7 +690,7 @@ async function demarrer(session) {
     $("bulle").classList.add("cache");
     if (ancien) oublier(cleAttente(ancien));
     lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; etat.zoneSeule = false;
-    etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0;
+    etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0; etat.perso = [];
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
   }
@@ -931,7 +943,7 @@ function rendreListe() {
   const themes = [...compte.entries()].sort((x, y) => (x[0] === "Autre") - (y[0] === "Autre") || y[1] - x[1]);
   // Catégories personnelles sans article : affichées grisées
   const presents = new Set(themes.map(([t]) => normaliser(t)));
-  const vides = etat.prefs.themes.filter((t) => t.categorie && !presents.has(normaliser(t.nom)));
+  const vides = etat.perso.filter((t) => t.categorie && t.actif && !presents.has(normaliser(t.nom)));
   const nbZone = zoneDeps.size ? regrouper(etat.articles.filter(dansZone)).liste.length : 0;
   if (!zoneDeps.size) etat.zoneSeule = false;
   $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
@@ -1233,40 +1245,144 @@ $("b-loupe").onclick = () => {
 new ResizeObserver(() => document.documentElement.style.setProperty("--outils", $("outils").offsetHeight + "px")).observe($("outils"));
 
 /* ---------- Paramètres ---------- */
-function ajouterTheme(brut, categorie = false) {
+// Thèmes personnels : catalogue commun (table themes), suivis par compte. Les écritures passent par des
+// fonctions serveur (ajouter_theme, suivre_theme, modifier_theme) qui empêchent les doublons.
+const erreurRpc = (error) => error?.message || "Erreur inconnue.";
+async function ajouterTheme(brut) {
   const nom = String(brut).replace(/\s+/g, " ").trim();
-  const th = etat.prefs.themes;
-  if (!etat.prefsChargees) return { ok: false, msg: "Préférences indisponibles pour le moment." };
+  if (!sessionCourante || !etat.principauxCharges) return { ok: false, msg: "Thèmes indisponibles pour le moment." };
   if (!nom) return { ok: false, msg: "Saisissez un thème." };
   if (nom.length > 60) return { ok: false, msg: "60 caractères au maximum." };
-  if (th.some((t) => normaliser(t.nom) === normaliser(nom))) return { ok: false, msg: "Ce thème existe déjà." };
-  if (th.length >= 50) return { ok: false, msg: "50 thèmes au maximum." };
-  th.push({ nom, categorie });
-  sauverPrefs("themes");
-  return { ok: true, msg: `« ${nom} » ajouté aux thèmes` };
+  if (/[<>`]/.test(nom)) return { ok: false, msg: "Caractères non autorisés (< > `)." };
+  if (etat.perso.some((t) => normaliser(t.nom) === normaliser(nom))) return { ok: false, msg: "Vous suivez déjà ce thème." };
+  versionSuivis++;
+  try {
+    const { data, error } = await sb.rpc("ajouter_theme", { p_nom: nom });
+    if (error) return { ok: false, msg: erreurRpc(error) };
+    await rechargerThemes();
+    if (data?.statut === "principal") return { ok: true, msg: `« ${data.nom} » est un thème principal : il est affiché.` };
+    if (data?.statut === "existant") return { ok: true, msg: `« ${data.nom} » existait déjà : vous le suivez maintenant.` };
+    return { ok: true, msg: `« ${data?.nom ?? nom} » ajouté à vos thèmes.` };
+  } catch (e) { return { ok: false, msg: "Ajout impossible (connexion ?)" }; }
+}
+// Renvoie true si le suivi a réussi
+async function suivreTheme(id) {
+  versionSuivis++;
+  try {
+    const { data, error } = await sb.rpc("suivre_theme", { p_id: id });
+    if (error) { toast(erreurRpc(error)); return false; }
+    toast(`Vous suivez « ${data?.nom ?? "ce thème"} ».`);
+    await rechargerThemes();
+    chargerSuggestions();
+    return true;
+  } catch (e) { toast("Suivi impossible (connexion ?)"); return false; }
+}
+// Annule une recherche de thèmes proches en attente ou en vol, et masque le cadre
+function fermerProches() {
+  clearTimeout(minuteurProches); numeroProches++;
+  $("proches").classList.add("cache");
 }
 function rendreThemes() {
-  $("liste-themes").innerHTML = etat.prefs.themes.length
-    ? etat.prefs.themes.map((t, i) => `<li><span class="nom">${echapper(t.nom)}</span>
-        <label class="coche"><input type="checkbox" data-cat="${i}"${t.categorie ? " checked" : ""}> aussi comme catégorie</label>
-        <button class="icone" data-suppr="${i}" aria-label="Supprimer le thème ${echapper(t.nom)}">✕</button></li>`).join("")
+  if (!etat.principauxCharges) { $("liste-themes").innerHTML = '<li class="note">Thèmes indisponibles pour le moment.</li>'; return; }
+  $("liste-themes").innerHTML = etat.perso.length
+    ? etat.perso.map((t) => `<li><span class="nom">${echapper(t.nom)}${t.actif ? "" : ' <span class="note">(désactivé)</span>'}</span>
+        <button class="icone" data-quitter="${t.id}" aria-label="Ne plus suivre le thème ${echapper(t.nom)}">✕</button>
+        <div class="options">${t.mien
+          ? `<label class="coche"><input type="checkbox" data-cat="${t.id}"${t.categorie ? " checked" : ""}> aussi comme catégorie</label>
+             <label class="coche"><input type="checkbox" data-partage="${t.id}"${t.partage ? " checked" : ""}> proposer aux autres lecteurs</label>`
+          : '<span class="note">Thème partagé par un autre lecteur</span>'}</div></li>`).join("")
     : '<li class="note">Aucun thème personnel.</li>';
 }
-$("form-theme").onsubmit = (e) => {
+$("form-theme").onsubmit = async (e) => {
   e.preventDefault();
-  const r = ajouterTheme($("nouveau-theme").value);
+  const champ = $("nouveau-theme"), bouton = e.submitter;
+  if (bouton) bouton.disabled = true;
+  const r = await ajouterTheme(champ.value);
+  if (bouton) bouton.disabled = false;
   $("msg-theme").textContent = r.ok ? "" : r.msg;
-  if (r.ok) { $("nouveau-theme").value = ""; rendreThemes(); }
+  if (r.ok) { champ.value = ""; fermerProches(); toast(r.msg); }
 };
-$("liste-themes").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-suppr]"); if (!b) return;
-  etat.prefs.themes.splice(+b.dataset.suppr, 1);
-  sauverPrefs("themes"); rendreThemes();
+$("liste-themes").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-quitter]"); if (!b || !sessionCourante) return;
+  const id = Number(b.dataset.quitter), uid = sessionCourante;
+  b.disabled = true; versionSuivis++;
+  try {
+    const { error } = await sb.from("suivis").delete().eq("user_id", uid).eq("theme_id", id);
+    if (error) toast("Retrait impossible : " + error.message);
+  } catch (err) { toast("Retrait impossible (connexion ?)"); }
+  await rechargerThemes(); // re-rend la liste (le bouton disparaît ou redevient actif)
+  chargerSuggestions();
 });
-$("liste-themes").addEventListener("change", (e) => {
-  const c = e.target.closest("[data-cat]"); if (!c) return;
-  const t = etat.prefs.themes[+c.dataset.cat];
-  if (t) { t.categorie = c.checked; sauverPrefs("themes"); }
+// Catégorie / partage : une modification à la fois par case, état relu depuis le serveur ensuite
+$("liste-themes").addEventListener("change", async (e) => {
+  const c = e.target.closest("[data-cat],[data-partage]"); if (!c || !sessionCourante) return;
+  const id = Number(c.dataset.cat ?? c.dataset.partage), t = etat.perso.find((x) => x.id === id);
+  if (!t) return;
+  const champ = c.dataset.cat !== undefined ? "categorie" : "partage";
+  const valeurs = { categorie: t.categorie, partage: t.partage, [champ]: c.checked };
+  for (const x of $("liste-themes").querySelectorAll(`[data-cat="${id}"],[data-partage="${id}"]`)) x.disabled = true;
+  versionSuivis++;
+  try {
+    const { error } = await sb.rpc("modifier_theme", { p_id: id, p_categorie: valeurs.categorie, p_partage: valeurs.partage });
+    if (error) toast(erreurRpc(error));
+  } catch (err) { toast("Modification impossible (connexion ?)"); }
+  await rechargerThemes();
+});
+
+// Thèmes proches de la saisie (anonymes), pour éviter les doublons
+let minuteurProches = null, numeroProches = 0;
+$("nouveau-theme").addEventListener("input", () => {
+  clearTimeout(minuteurProches);
+  minuteurProches = setTimeout(chercherProches, 350);
+});
+async function chercherProches() {
+  const nom = $("nouveau-theme").value.replace(/\s+/g, " ").trim(), moi = ++numeroProches, zone = $("proches");
+  if (nom.length < 3 || !sessionCourante) { zone.classList.add("cache"); return; }
+  let res;
+  try { res = await sb.rpc("themes_proches", { p_nom: nom }); } catch (e) { return; }
+  if (moi !== numeroProches) return;
+  const liste = (res.error ? [] : res.data ?? []).filter((t) => t && typeof t.nom === "string");
+  if (!liste.length) { zone.classList.add("cache"); return; }
+  zone.innerHTML = "<p>Thèmes proches déjà existants :</p>" + '<div class="pastilles">' + liste.map((t) => {
+    const n = Number(t.nb_lecteurs) || 0;
+    const info = t.type === "principal" ? "thème principal" : `${n} lecteur${n > 1 ? "s" : ""}`;
+    return t.suivi
+      ? `<button type="button" disabled>✓ ${echapper(t.nom)} · ${info}</button>`
+      : `<button type="button" data-proche="${Number(t.id)}" data-type="${t.type === "principal" ? "principal" : "perso"}">+ ${echapper(t.nom)} · ${info}</button>`;
+  }).join("") + "</div>";
+  zone.classList.remove("cache");
+}
+$("proches").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-proche]"); if (!b) return;
+  const id = Number(b.dataset.proche);
+  b.disabled = true;
+  let ok;
+  if (b.dataset.type === "principal") {
+    ok = etat.principaux.some((t) => t.id === id);
+    if (ok) { basculerPrincipal(id, true); rendrePrincipaux(""); toast("Thème principal réaffiché."); }
+    else toast("Thème indisponible pour le moment.");
+  } else ok = await suivreTheme(id);
+  if (ok) { $("nouveau-theme").value = ""; fermerProches(); } else b.disabled = false;
+});
+
+// Suggestions : thèmes perso partagés par d'autres lecteurs, que je ne suis pas
+let numeroSuggestions = 0;
+async function chargerSuggestions() {
+  const zone = $("suggestions"), uid = sessionCourante, moi = ++numeroSuggestions;
+  if (!uid) return;
+  let res;
+  try { res = await sb.rpc("suggestions_themes"); } catch (e) { res = { error: e }; }
+  if (uid !== sessionCourante || moi !== numeroSuggestions) return;
+  const liste = (res.error ? [] : res.data ?? []).filter((t) => t && typeof t.nom === "string");
+  zone.innerHTML = liste.length
+    ? liste.map((t) => { const n = Number(t.nb_lecteurs) || 0;
+        return `<button type="button" data-suggestion="${Number(t.id)}">+ ${echapper(t.nom)} · ${n} lecteur${n > 1 ? "s" : ""}</button>`; }).join("")
+    : `<p class="note">${res.error ? "Suggestions indisponibles pour le moment." : "Aucune suggestion pour l'instant."}</p>`;
+}
+$("suggestions").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-suggestion]"); if (!b) return;
+  b.disabled = true;
+  suivreTheme(Number(b.dataset.suggestion)).then((ok) => { if (!ok) b.disabled = false; });
 });
 // p = préfixe des identifiants : "" (Paramètres) ou "b-" (première connexion)
 function rendreZone(p = "") {
@@ -1311,22 +1427,48 @@ for (const p of ["", "b-"]) {
 // s'il est encore d'actualité (même session, aucun choix modifié entre-temps). En cas d'erreur, rien n'est masqué.
 let versionSuivis = 0;
 async function chargerPrincipaux(uid) {
-  const vide = { ok: false, principaux: [], masques: new Set() };
+  const vide = { ok: false, principaux: [], masques: new Set(), perso: [] };
   if (!uid) return vide;
   try {
     const [th, su] = await Promise.all([
       sb.from("themes").select("id,nom").eq("type", "principal").eq("actif", true).order("ordre").order("nom"),
-      sb.from("suivis").select("theme_id,suivi").eq("user_id", uid)
+      sb.from("suivis").select("theme_id,suivi,cree_le,themes(id,nom,type,categorie,partage,actif,cree_par)").eq("user_id", uid).order("cree_le")
     ]);
     if (th.error || su.error) return vide;
     const principaux = (th.data ?? []).filter((t) => t && typeof t.nom === "string" && normaliser(t.nom) !== "autre")
       .map((t) => ({ id: Number(t.id), nom: t.nom }));
-    const masques = new Set((su.data ?? []).filter((s) => s && s.suivi === false).map((s) => Number(s.theme_id)));
-    return { ok: true, principaux, masques };
+    const lignes = (su.data ?? []).filter((s) => s && typeof s === "object");
+    const masques = new Set(lignes.filter((s) => s.suivi === false).map((s) => Number(s.theme_id)));
+    // Thèmes personnels suivis ; « mien » : seul l'auteur règle catégorie et partage
+    const perso = lignes.filter((s) => s.suivi !== false && s.themes?.type === "perso" && typeof s.themes.nom === "string")
+      .map((s) => ({ id: Number(s.themes.id), nom: s.themes.nom, categorie: !!s.themes.categorie, partage: !!s.themes.partage,
+        actif: s.themes.actif !== false, mien: s.themes.cree_par === uid }));
+    return { ok: true, principaux, masques, perso };
   } catch (e) { return vide; }
 }
 function appliquerPrincipaux(r) {
-  etat.principaux = r.principaux; etat.principauxMasques = r.masques; etat.principauxCharges = r.ok;
+  etat.principaux = r.principaux; etat.principauxMasques = r.masques; etat.principauxCharges = r.ok; etat.perso = r.perso;
+}
+// Recharge thèmes et suivis après une action (ajout, suivi, retrait) : attend les écritures en file,
+// et recommence si un autre choix a été fait pendant la lecture (le dernier état serveur gagne toujours)
+async function rechargerThemes() {
+  const uid = sessionCourante;
+  for (let essai = 0; essai < 5; essai++) {
+    const v = versionSuivis;
+    await fileSuivis;
+    const r = await chargerPrincipaux(uid);
+    if (uid !== sessionCourante) return;
+    if (v !== versionSuivis) continue;
+    appliquerPrincipaux(r);
+    break;
+  }
+  if (etat.reglages) { rendrePrincipaux(""); rendreThemes(); etat.prefsModif = true; }
+  else rafraichirAffichage();
+}
+// Réapplique masquage et catégories à l'affichage
+function rafraichirAffichage() {
+  etat.articles = sansMasques(etat.tous);
+  if (etat.vue === "accueil") rendreAccueil(); else majListes(true);
 }
 function sansMasques(tab) {
   const noms = new Set(etat.principaux.filter((t) => etat.principauxMasques.has(t.id)).map((t) => normaliser(t.nom)));
@@ -1407,7 +1549,9 @@ function ouvrirReglages() {
   if (etat.reglages || !etat.prefsChargees) return;
   etat.reglages = true; etat.prefsModif = false;
   $("msg-theme").textContent = ""; $("filtre-zone").value = "";
-  rendrePrincipaux(""); rendreThemes(); rendreZone("");
+  $("nouveau-theme").value = ""; fermerProches();
+  $("suggestions").innerHTML = '<p class="note">Chargement…</p>';
+  rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions();
   history.pushState({ vue: "reglages" }, "");
   $("voile").classList.remove("cache"); $("reglages").classList.remove("cache");
 }
@@ -1416,10 +1560,7 @@ function masquerReglages() {
   if (!etat.reglages) return;
   etat.reglages = false;
   $("voile").classList.add("cache"); $("reglages").classList.add("cache");
-  if (etat.prefsModif && sessionCourante) {
-    etat.prefsModif = false; etat.articles = sansMasques(etat.tous);
-    if (etat.vue === "accueil") rendreAccueil(); else majListes(true);
-  }
+  if (etat.prefsModif && sessionCourante) { etat.prefsModif = false; rafraichirAffichage(); }
 }
 $("btn-reglages").onclick = ouvrirReglages;
 $("btn-reglages-fermer").onclick = fermerReglages;
@@ -1457,8 +1598,7 @@ $("bulle").addEventListener("pointerdown", () => { dernierAppuiBulle = Date.now(
 $("bulle").addEventListener("mousedown", (e) => e.preventDefault());
 $("bulle").onclick = () => {
   const t = etat.selection; if (!t) return;
-  const r = ajouterTheme(t);
-  toast(r.msg);
+  ajouterTheme(t).then((r) => toast(r.msg));
   dernierAppuiBulle = 0; etat.selection = null;
   $("bulle").classList.add("cache");
   getSelection()?.removeAllRanges();
