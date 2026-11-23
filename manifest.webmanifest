@@ -1,11 +1,11 @@
 {
-  "name": "Le Journal — veille",
-  "short_name": "Journal",
+  "name": "Vigie — veille cyber",
+  "short_name": "Vigie",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f1e7",
-  "theme_color": "#f6f1e7",
+  "background_color": "#f5f6f8",
+  "theme_color": "#f5f6f8",
   "lang": "fr",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
 }
