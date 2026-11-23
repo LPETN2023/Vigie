@@ -390,6 +390,14 @@
   .pastilles { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
   .pastilles button { border: 1px solid var(--filet); border-radius: 999px; padding: 6px 12px; background: var(--surface); color: var(--texte); font-size: .85rem; }
   .pastilles button:disabled { opacity: .5; }
+  .pastilles button.danger { color: var(--non); border-color: currentColor; }
+  #btn-reglages { position: relative; }
+  #btn-reglages.alerte::after {
+    content: ""; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%;
+    background: #e11d48; border: 2px solid var(--fond);
+  }
+  .alertes-admin { margin: 4px 0 8px; padding: 10px 12px; border-radius: 12px; background: var(--non-doux); color: var(--non); font-size: .88rem; }
+  .alertes-admin button { color: inherit; font-weight: 600; text-decoration: underline; padding: 2px 0; display: block; text-align: left; }
   .proches { margin: 2px 0 8px; padding: 8px 12px; border: 1px solid var(--filet); border-radius: 12px; font-size: .85rem; }
   .proches p { margin: 0 0 6px; color: var(--doux); }
   .liste-admin { list-style: none; margin: 8px 0 0; padding: 0; }
@@ -458,6 +466,7 @@
     <button class="btn principal" type="submit" id="btn-connexion">Se connecter</button>
     <div class="msg" id="msg-connexion" role="alert"></div>
     <p class="bascule-mode"><button type="button" class="lien" id="btn-mode">Pas encore de compte ? Créer un compte</button></p>
+    <p class="bascule-mode" id="ligne-oubli"><button type="button" class="lien" id="btn-oubli">Mot de passe oublié ?</button></p>
   </form>
 </section>
 
@@ -466,6 +475,7 @@
     <p id="attente-msg">Votre compte existe, mais il n'est pas encore autorisé à lire le journal.</p>
     <p><button class="btn principal cache" type="button" id="btn-reessayer">Réessayer</button></p>
     <button class="lien" id="btn-deco-attente">Se déconnecter</button>
+    <p><button class="lien" type="button" id="btn-suppr-attente">Supprimer mon compte</button></p>
   </div>
 </section>
 
@@ -586,6 +596,7 @@
     <ul class="liste-admin" id="admin-liste"></ul>
   </div>
   <div id="vue-reglages">
+  <div class="alertes-admin cache" id="alertes-admin" role="status"></div>
   <button class="lien cache" type="button" id="btn-admin">Administration (comptes, thèmes) ›</button>
   <h4>Thèmes principaux</h4>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
@@ -606,6 +617,12 @@
   <p class="note" id="resume-zone"></p>
   <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
   <div class="liste-zone" id="liste-zone"></div>
+  <h4>Mon compte</h4>
+  <p class="note" id="mon-email"></p>
+  <div class="pastilles">
+    <button type="button" id="btn-mdp">Changer le mot de passe</button>
+    <button type="button" id="btn-suppr-compte" class="danger">Supprimer mon compte</button>
+  </div>
   </div>
   <div class="actions">
     <button class="btn" id="btn-deco"><svg width="18" height="18"><use href="#i-sortie"/></svg>Se déconnecter</button>
@@ -764,12 +781,14 @@ function toast(msg) {
 /* ---------- Fenêtre de dialogue (remplace alert / confirm / prompt) ---------- */
 // Résout : true (confirmé), la saisie (si `saisie` est une chaîne) ou null (annulé)
 let dialogueEnCours = null;
-function dialogue({ titre, texte = "", saisie = null, ok = "OK", danger = false, max = 300 }) {
+function dialogue({ titre, texte = "", saisie = null, ok = "OK", danger = false, max = 300, type = "text" }) {
   if (dialogueEnCours) dialogueEnCours(null);
   $("dialogue-titre").textContent = titre;
   $("dialogue-texte").textContent = texte;
   $("dialogue-texte").classList.toggle("cache", !texte);
   const champ = $("dialogue-champ");
+  champ.type = type;
+  champ.autocomplete = type === "password" ? "new-password" : "off";
   champ.classList.toggle("cache", saisie === null);
   champ.maxLength = max;
   champ.value = saisie ?? "";
@@ -841,11 +860,53 @@ function majModeConnexion() {
   $("btn-connexion").textContent = modeInscription ? "Créer mon compte" : "Se connecter";
   $("btn-mode").textContent = modeInscription ? "J'ai déjà un compte : me connecter" : "Pas encore de compte ? Créer un compte";
   for (const id of ["l-mdp2", "mdp2", "note-inscription"]) $(id).classList.toggle("cache", !modeInscription);
+  $("ligne-oubli").classList.toggle("cache", modeInscription);
   $("mdp2").required = modeInscription; $("mdp2").value = "";
   $("mdp").autocomplete = modeInscription ? "new-password" : "current-password";
   messageConnexion("");
 }
 $("btn-mode").onclick = () => { modeInscription = !modeInscription; majModeConnexion(); };
+
+/* ---------- Mot de passe et compte ---------- */
+const adresseRetour = () => location.origin + location.pathname;
+$("btn-oubli").onclick = async () => {
+  const email = $("email").value.trim();
+  if (!email || !$("email").checkValidity()) { messageConnexion("Saisissez d'abord votre adresse e-mail ci-dessus."); $("email").focus(); return; }
+  $("btn-oubli").disabled = true;
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: adresseRetour() });
+    if (error && /rate limit/i.test(error.message)) { messageConnexion("Trop de demandes : réessayez dans une heure."); return; }
+    // Même message que le compte existe ou non : on ne révèle pas quelles adresses sont inscrites
+    messageConnexion("Si un compte existe pour " + email + ", un lien pour choisir un nouveau mot de passe vient d'y être envoyé.", true);
+  } catch (e) { messageConnexion("Connexion au serveur impossible. Vérifiez le réseau."); }
+  finally { $("btn-oubli").disabled = false; }
+};
+// Demande un nouveau mot de passe (deux saisies) et l'enregistre ; renvoie true si c'est fait
+async function choisirMotDePasse(titre) {
+  for (;;) {
+    const mdp = await dialogue({ titre, texte: "10 caractères minimum.", saisie: "", ok: "Suivant", type: "password", max: 72 });
+    if (mdp === null) return false;
+    if (mdp.length < 10) { await dialogue({ titre: "Mot de passe trop court", texte: "Il faut au moins 10 caractères.", ok: "Recommencer" }); continue; }
+    const bis = await dialogue({ titre: "Confirmez le mot de passe", saisie: "", ok: "Enregistrer", type: "password", max: 72 });
+    if (bis === null) return false;
+    if (bis !== mdp) { await dialogue({ titre: "Les deux saisies diffèrent", ok: "Recommencer" }); continue; }
+    try {
+      const { error } = await sb.auth.updateUser({ password: mdp });
+      if (!error) { toast("Mot de passe enregistré."); return true; }
+      await dialogue({ titre: "Mot de passe refusé", texte: /same|different/i.test(error.message) ? "Choisissez un mot de passe différent de l'ancien."
+        : /weak|pwned|password/i.test(error.message) ? "Mot de passe trop faible ou trop courant : choisissez-en un autre." : error.message, ok: "Recommencer" });
+    } catch (e) { toast("Connexion au serveur impossible."); return false; }
+  }
+}
+async function supprimerMonCompte() {
+  if (!await confirmer("Supprimer votre compte ?", "Suppression définitive : vos préférences, avis, lectures et articles gardés sont effacés. Les thèmes que vous avez proposés restent disponibles pour les autres, sans votre nom.", "Supprimer mon compte", true)) return;
+  try {
+    const { error } = await sb.rpc("supprimer_mon_compte");
+    if (error) { await dialogue({ titre: "Suppression impossible", texte: erreurRpc(error) }); return; }
+    toast("Votre compte a été supprimé.");
+    await sb.auth.signOut({ scope: "local" });
+  } catch (e) { toast("Connexion au serveur impossible."); }
+}
 $("form-connexion").onsubmit = async (e) => {
   e.preventDefault();
   messageConnexion("");
@@ -881,7 +942,11 @@ $("btn-reessayer").onclick = async () => {
 };
 
 let sessionCourante = null;
-sb.auth.onAuthStateChange((evt, session) => setTimeout(() => demarrer(session), 0));
+sb.auth.onAuthStateChange((evt, session) => setTimeout(() => {
+  demarrer(session);
+  // Retour par le lien « mot de passe oublié » : la session est ouverte, on demande le nouveau mot de passe
+  if (evt === "PASSWORD_RECOVERY") choisirMotDePasse("Choisissez un nouveau mot de passe");
+}, 0));
 async function demarrer(session) {
   const uid = session?.user?.id ?? null;
   if (uid === sessionCourante && uid !== null) return;
@@ -896,7 +961,7 @@ async function demarrer(session) {
     if (ancien) oublier(cleAttente(ancien));
     lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); effacerRecherche(); etat.zoneSeule = false;
     etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0; etat.perso = [];
-    etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false;
+    etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false; etat.alertes = null; rendreAlertesAdmin();
     etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
     if (dialogueEnCours) dialogueEnCours(null);
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
@@ -928,6 +993,7 @@ async function demarrer(session) {
     if (sessionCourante !== uid) return;
     etat.admin = r.data === true;
     if (etat.reglages) $("btn-admin").classList.toggle("cache", !etat.admin);
+    majAlertesAdmin();
   }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
   const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,parcours_fini")
@@ -1027,6 +1093,7 @@ async function charger() {
   if (etat.gardesSeuls) await chargerArticlesGardes();
   if (moi !== numeroRequete) return;
   dernierChargement = Date.now();
+  majAlertesAdmin();
   rendreAccueil();
   if (etat.vue === "journal") ouvrirJournal(0, false);
 }
@@ -1426,6 +1493,7 @@ $("propositions").addEventListener("click", async (e) => {
   const x = etat.propositions.find((y) => y.id === +b.dataset.prop);
   if (x) x.decision = decision;
   rendrePropositions();
+  majAlertesAdmin();
 });
 
 $("filtres").addEventListener("click", async (e) => {
@@ -2084,6 +2152,8 @@ function ouvrirReglages() {
   rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions();
   afficherVueAdmin(false);
   $("btn-admin").classList.toggle("cache", !etat.admin);
+  rendreAlertesAdmin(); majAlertesAdmin();
+  sb.auth.getUser().then(({ data }) => { $("mon-email").textContent = data?.user?.email ? "Connecté avec " + data.user.email : ""; }, () => {});
   history.pushState({ vue: "reglages" }, "");
   $("voile").classList.remove("cache"); $("reglages").classList.remove("cache");
 }
@@ -2105,6 +2175,44 @@ function afficherVueAdmin(oui) {
   $("reglages").scrollTop = 0;
 }
 $("btn-admin").onclick = () => { afficherVueAdmin(true); $("admin-filtre").value = ""; $("admin-msg").textContent = ""; chargerAdmin(); chargerComptes(); };
+
+$("btn-mdp").onclick = () => choisirMotDePasse("Nouveau mot de passe");
+$("btn-suppr-compte").onclick = $("btn-suppr-attente").onclick = supprimerMonCompte;
+
+/* ---------- Points d'attention de l'administrateur ---------- */
+// Comptes à valider (e-mail confirmé) et sources dont le retrait est proposé : pastille sur les Paramètres
+let numeroAlertes = 0;
+async function majAlertesAdmin() {
+  const moi = ++numeroAlertes, uid = sessionCourante;
+  if (!etat.admin || !uid) { etat.alertes = null; rendreAlertesAdmin(); return; }
+  try {
+    const { data, error } = await sb.rpc("admin_en_attente");
+    if (moi !== numeroAlertes || uid !== sessionCourante || error) return;
+    const l = Array.isArray(data) ? data[0] : data;
+    etat.alertes = { comptes: Number(l?.comptes) || 0, propositions: Number(l?.propositions) || 0 };
+    rendreAlertesAdmin();
+  } catch (e) { /* hors ligne : on garde l'état connu */ }
+}
+function rendreAlertesAdmin() {
+  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions : 0;
+  $("btn-reglages").classList.toggle("alerte", n > 0);
+  $("btn-reglages").setAttribute("aria-label", n ? `Paramètres (${n} élément${n > 1 ? "s" : ""} en attente)` : "Paramètres");
+  const bloc = $("alertes-admin");
+  bloc.classList.toggle("cache", !n);
+  if (!n) { bloc.innerHTML = ""; return; }
+  bloc.innerHTML = (a.comptes ? `<button type="button" data-alerte="comptes">${a.comptes} compte${a.comptes > 1 ? "s" : ""} à valider ›</button>` : "")
+    + (a.propositions ? `<button type="button" data-alerte="sources">${a.propositions} retrait${a.propositions > 1 ? "s" : ""} de source à décider ›</button>` : "");
+}
+$("alertes-admin").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-alerte]"); if (!b) return;
+  if (b.dataset.alerte === "comptes") { $("btn-admin").click(); return; }
+  // Les propositions de retrait sont sur l'accueil : on ferme les Paramètres et on y descend
+  fermerReglages();
+  setTimeout(() => {
+    if (etat.vue === "journal") history.back();
+    setTimeout(() => $("propositions").scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  }, 150);
+});
 
 /* ---------- Administration des comptes ---------- */
 let numeroComptes = 0, comptesOccupe = false;
@@ -2157,7 +2265,7 @@ async function actionComptes(rpc, params, succes) {
     if (uid !== sessionCourante) return;
     if (error) $("comptes-msg").textContent = erreurRpc(error); else toast(succes);
   } catch (e) { $("comptes-msg").textContent = "Action impossible (connexion ?)"; }
-  finally { comptesOccupe = false; $("admin-validation").disabled = false; if (uid === sessionCourante) await chargerComptes(); }
+  finally { comptesOccupe = false; $("admin-validation").disabled = false; if (uid === sessionCourante) { await chargerComptes(); majAlertesAdmin(); } }
 }
 $("admin-validation").onchange = async (e) => {
   const actif = e.target.checked;
