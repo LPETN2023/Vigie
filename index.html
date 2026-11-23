@@ -12,7 +12,7 @@
 <title>Vigie</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root {
     --fond: #f5f6f8; --surface: #ffffff; --surface-2: #eef0f4; --texte: #16181d; --doux: #626a78;
@@ -370,6 +370,18 @@
   #reglages { max-height: 90vh; }
   #reglages h3 { margin: 0 0 4px; font-size: 1.15rem; }
   #reglages h4 { margin: 18px 0 6px; font-size: .95rem; }
+  #reglages details.section { border-top: 1px solid var(--filet); }
+  #reglages details.section:last-of-type { border-bottom: 1px solid var(--filet); }
+  #reglages details.section > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 2px; font-weight: 700; font-size: 1rem;
+  }
+  #reglages details.section > summary::-webkit-details-marker { display: none; }
+  #reglages details.section > summary::after { content: "▾"; color: var(--doux); transition: transform .2s; }
+  #reglages details.section:not([open]) > summary::after { transform: rotate(-90deg); }
+  #reglages details.section[open] { padding-bottom: 14px; }
+  #reglages details.section > h4:first-of-type { margin-top: 6px; }
+  #comptes-filtre { margin: 8px 0 2px; }
   .note { margin: 4px 0 8px; color: var(--doux); font-size: .82rem; }
   .ligne { display: flex; gap: 8px; }
   .ligne input { flex: 1; min-width: 0; }
@@ -580,12 +592,23 @@
   <h3 id="reglages-titre">Paramètres</h3>
   <div id="vue-admin" class="cache">
     <button class="lien" type="button" id="admin-retour">‹ Retour aux paramètres</button>
-    <h4>Comptes</h4>
+    <details class="section" id="sec-comptes"><summary>Gestion des comptes</summary>
     <label class="coche"><input type="checkbox" id="admin-validation"> Valider chaque nouveau compte avant l'accès à l'application</label>
     <p class="note" id="admin-validation-note"></p>
+    <input type="search" id="comptes-filtre" placeholder="Rechercher un compte (e-mail)" aria-label="Rechercher un compte" autocomplete="off">
     <div class="msg" id="comptes-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-comptes"></ul>
-    <h4>Thèmes</h4>
+    </details>
+    <details class="section" id="sec-notifs"><summary>Notifications</summary>
+    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation ou qu'un retrait de source est proposé.</p>
+    <p class="note" id="notifs-etat"></p>
+    <div class="pastilles">
+      <button type="button" id="btn-notifs">Activer sur cet appareil</button>
+      <button type="button" id="btn-notifs-test" class="cache">Envoyer un essai</button>
+    </div>
+    <div class="msg" id="notifs-msg" role="alert"></div>
+    </details>
+    <details class="section" id="sec-themes-admin"><summary>Gestion des thèmes</summary>
     <p class="note">Catalogue commun à tous les lecteurs. Les auteurs des thèmes ne sont jamais affichés. Chaque action est tracée.</p>
     <h4>Doublons probables</h4>
     <div id="admin-doublons"></div>
@@ -594,14 +617,16 @@
     <input type="search" id="admin-filtre" placeholder="Filtrer les thèmes" aria-label="Filtrer les thèmes" autocomplete="off">
     <div class="msg" id="admin-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-liste"></ul>
+    </details>
   </div>
   <div id="vue-reglages">
   <div class="alertes-admin cache" id="alertes-admin" role="status"></div>
   <button class="lien cache" type="button" id="btn-admin">Administration (comptes, thèmes) ›</button>
-  <h4>Thèmes principaux</h4>
+  <details class="section"><summary>Thèmes principaux</summary>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
-  <h4>Mes thèmes personnels</h4>
+  </details>
+  <details class="section"><summary>Mes thèmes personnels</summary>
   <p class="note">Sujets à privilégier lors de la sélection des articles (sélection commune à tous les lecteurs). Pris en compte à la prochaine mise à jour.</p>
   <ul class="liste-reglages" id="liste-themes"></ul>
   <form class="ligne" id="form-theme" autocomplete="off">
@@ -613,16 +638,19 @@
   <h4>Suggestions</h4>
   <p class="note">Thèmes suivis par d'autres lecteurs (anonymes). Touchez pour les suivre.</p>
   <div class="pastilles" id="suggestions"></div>
-  <h4>Zone géographique</h4>
+  </details>
+  <details class="section"><summary>Zone géographique</summary>
   <p class="note" id="resume-zone"></p>
   <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
   <div class="liste-zone" id="liste-zone"></div>
-  <h4>Mon compte</h4>
+  </details>
+  <details class="section"><summary>Mon compte</summary>
   <p class="note" id="mon-email"></p>
   <div class="pastilles">
     <button type="button" id="btn-mdp">Changer le mot de passe</button>
     <button type="button" id="btn-suppr-compte" class="danger">Supprimer mon compte</button>
   </div>
+  </details>
   </div>
   <div class="actions">
     <button class="btn" id="btn-deco"><svg width="18" height="18"><use href="#i-sortie"/></svg>Se déconnecter</button>
@@ -993,7 +1021,7 @@ async function demarrer(session) {
     if (sessionCourante !== uid) return;
     etat.admin = r.data === true;
     if (etat.reglages) $("btn-admin").classList.toggle("cache", !etat.admin);
-    majAlertesAdmin();
+    majAlertesAdmin(); traiterOuverture();
   }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
   const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,parcours_fini")
@@ -1002,6 +1030,18 @@ async function demarrer(session) {
   if (!pf.error && !pf.data?.parcours_fini) { await ouvrirBienvenue(uid, pf.data); return; }
   afficher("app");
   await charger();
+}
+
+// Demande d'ouverture venue d'une notification ; l'adresse est nettoyée tout de suite (le # éventuel de Supabase est gardé)
+let ouvrirDemande = null;
+{
+  // Seul le paramètre « ouvrir » est retiré : les autres (ex. ?code= d'un lien de connexion Supabase) restent intacts
+  const p = new URLSearchParams(location.search);
+  ouvrirDemande = p.get("ouvrir");
+  if (ouvrirDemande !== null) {
+    p.delete("ouvrir");
+    history.replaceState(history.state, "", location.pathname + (p.toString() ? "?" + p : "") + location.hash);
+  }
 }
 
 /* ---------- Données ---------- */
@@ -1093,7 +1133,7 @@ async function charger() {
   if (etat.gardesSeuls) await chargerArticlesGardes();
   if (moi !== numeroRequete) return;
   dernierChargement = Date.now();
-  majAlertesAdmin();
+  majAlertesAdmin(); traiterOuverture();
   rendreAccueil();
   if (etat.vue === "journal") ouvrirJournal(0, false);
 }
@@ -2152,7 +2192,7 @@ function ouvrirReglages() {
   rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions();
   afficherVueAdmin(false);
   $("btn-admin").classList.toggle("cache", !etat.admin);
-  rendreAlertesAdmin(); majAlertesAdmin();
+  rendreAlertesAdmin(); majAlertesAdmin(); fermerSections("#vue-reglages");
   sb.auth.getUser().then(({ data }) => { $("mon-email").textContent = data?.user?.email ? "Connecté avec " + data.user.email : ""; }, () => {});
   history.pushState({ vue: "reglages" }, "");
   $("voile").classList.remove("cache"); $("reglages").classList.remove("cache");
@@ -2174,7 +2214,13 @@ function afficherVueAdmin(oui) {
   $("reglages-titre").textContent = oui ? "Administration des thèmes" : "Paramètres";
   $("reglages").scrollTop = 0;
 }
-$("btn-admin").onclick = () => { afficherVueAdmin(true); $("admin-filtre").value = ""; $("admin-msg").textContent = ""; chargerAdmin(); chargerComptes(); };
+$("btn-admin").onclick = () => {
+  afficherVueAdmin(true); fermerSections("#vue-admin");
+  $("admin-filtre").value = ""; $("comptes-filtre").value = ""; $("admin-msg").textContent = "";
+  chargerAdmin(); chargerComptes(); majEtatNotifs();
+};
+// Sections repliables des Paramètres : toutes fermées à l'ouverture
+function fermerSections(racine) { for (const d of document.querySelectorAll(`${racine} details.section`)) d.open = false; }
 
 $("btn-mdp").onclick = () => choisirMotDePasse("Nouveau mot de passe");
 $("btn-suppr-compte").onclick = $("btn-suppr-attente").onclick = supprimerMonCompte;
@@ -2205,7 +2251,7 @@ function rendreAlertesAdmin() {
 }
 $("alertes-admin").addEventListener("click", (e) => {
   const b = e.target.closest("[data-alerte]"); if (!b) return;
-  if (b.dataset.alerte === "comptes") { $("btn-admin").click(); return; }
+  if (b.dataset.alerte === "comptes") { $("btn-admin").click(); $("sec-comptes").open = true; return; }
   // Les propositions de retrait sont sur l'accueil : on ferme les Paramètres et on y descend
   fermerReglages();
   setTimeout(() => {
@@ -2213,6 +2259,76 @@ $("alertes-admin").addEventListener("click", (e) => {
     setTimeout(() => $("propositions").scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   }, 150);
 });
+
+/* ---------- Notifications de l'administrateur (Web Push) ---------- */
+const CLE_VAPID = "BG_EMmN5H_VpUJBzH61Zs1ISP6wyrFY70Zdug9CtTr1zEJ0epgKSTsLZetFuUwIq9YV_0joqkHLtAxeBK4Sw4YQ";
+const pushPossible = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+function cleVapid() {
+  const b64 = CLE_VAPID.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - CLE_VAPID.length % 4) % 4);
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+async function abonnementActuel() {
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+async function majEtatNotifs() {
+  $("notifs-msg").textContent = "";
+  if (!pushPossible()) {
+    $("notifs-etat").textContent = "Ce navigateur ne permet pas les notifications.";
+    $("btn-notifs").classList.add("cache"); $("btn-notifs-test").classList.add("cache"); return;
+  }
+  let sub = null;
+  try { sub = await abonnementActuel(); } catch (e) { /* indisponible */ }
+  etat.notifsActives = !!sub;
+  $("notifs-etat").textContent = Notification.permission === "denied"
+    ? "Notifications bloquées pour ce site : autorisez-les dans le navigateur (icône à gauche de l'adresse → Autorisations → Notifications)."
+    : sub ? "Activées sur cet appareil." : "Désactivées sur cet appareil.";
+  $("btn-notifs").classList.remove("cache");
+  $("btn-notifs").textContent = sub ? "Désactiver sur cet appareil" : "Activer sur cet appareil";
+  $("btn-notifs-test").classList.toggle("cache", !sub);
+}
+$("btn-notifs").onclick = async () => {
+  $("btn-notifs").disabled = true; $("notifs-msg").textContent = "";
+  try {
+    if (etat.notifsActives) {
+      const sub = await abonnementActuel();
+      if (sub) { await sb.rpc("admin_desabonner_push", { p_endpoint: sub.endpoint }); await sub.unsubscribe(); }
+      toast("Notifications désactivées sur cet appareil.");
+      return;
+    }
+    if (await Notification.requestPermission() !== "granted") {
+      $("notifs-msg").textContent = "Autorisation refusée : les notifications restent désactivées."; return;
+    }
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: cleVapid() });
+    const j = sub.toJSON();
+    const { error } = await sb.rpc("admin_abonner_push", { p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth });
+    if (error) { await sub.unsubscribe(); $("notifs-msg").textContent = erreurRpc(error); return; }
+    toast("Notifications activées sur cet appareil.");
+  } catch (e) {
+    $("notifs-msg").textContent = "Activation impossible : " + (e?.message || "erreur inconnue");
+  } finally { $("btn-notifs").disabled = false; majEtatNotifs(); }
+};
+$("btn-notifs-test").onclick = async () => {
+  $("btn-notifs-test").disabled = true;
+  try {
+    const { error } = await sb.rpc("admin_tester_notification");
+    if (error) $("notifs-msg").textContent = erreurRpc(error);
+    else toast("Essai envoyé : la notification arrive dans quelques secondes.");
+  } catch (e) { $("notifs-msg").textContent = "Envoi impossible (connexion ?)"; }
+  finally { $("btn-notifs-test").disabled = false; }
+};
+
+// Ouverture depuis une notification (« ?ouvrir=comptes » ou « ?ouvrir=sources ») : une fois admin et préférences chargés
+function traiterOuverture() {
+  if (!ouvrirDemande || !etat.admin || !etat.prefsChargees || $("app").classList.contains("cache")) return;
+  const o = ouvrirDemande; ouvrirDemande = null;
+  if (o === "comptes") { ouvrirReglages(); $("btn-admin").click(); $("sec-comptes").open = true; }
+  else if (o === "sources" && !$("propositions").classList.contains("cache")) {
+    setTimeout(() => $("propositions").scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+  }
+}
 
 /* ---------- Administration des comptes ---------- */
 let numeroComptes = 0, comptesOccupe = false;
@@ -2238,7 +2354,9 @@ function rendreComptes() {
     + (attente ? ` ${attente} demande${attente > 1 ? "s" : ""} en attente.` : "");
   const date = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "";
   const STATUT = { attente: ["En attente", " alerte"], valide: ["Accès autorisé", ""], refuse: ["Refusé", ""] };
-  $("admin-comptes").innerHTML = etat.comptes.length ? etat.comptes.map((c) => {
+  const q = normaliser($("comptes-filtre").value);
+  const visibles = etat.comptes.filter((c) => !q || normaliser(c.email || "").includes(q));
+  $("admin-comptes").innerHTML = visibles.length ? visibles.map((c) => {
     const [lib, cls] = c.admin ? ["Administrateur", ""] : STATUT[c.statut] || [c.statut, ""];
     const id = echapper(c.user_id);
     // Une adresse non confirmée n'est pas prouvée : pas de validation possible (contrôlé aussi côté serveur)
@@ -2248,11 +2366,12 @@ function rendreComptes() {
       ? `${autoriser("Valider")}<button type="button" data-compte="${id}" data-valider="0">Refuser</button>`
       : c.statut === "valide" ? `<button type="button" data-compte="${id}" data-valider="0">Retirer l'accès</button>`
       : autoriser("Autoriser");
+    const supprimer = c.admin ? "" : `<button type="button" class="danger" data-compte="${id}" data-supprimer="1">Supprimer le compte</button>`;
     return `<li><div class="tete">${echapper(c.email || "(sans e-mail)")} <span class="etiquette${cls}">${echapper(lib)}</span>
         ${ok ? "" : '<span class="etiquette">e-mail non confirmé</span>'}</div>
       <p class="note">Inscrit le ${date(c.cree_le)}${c.decide_le && !c.admin ? ` · décision le ${date(c.decide_le)}` : ""}</p>
-      ${actions ? `<span class="pastilles">${actions}</span>` : ""}</li>`;
-  }).join("") : '<li class="note">Aucun compte.</li>';
+      ${actions || supprimer ? `<span class="pastilles">${actions}${supprimer}</span>` : ""}</li>`;
+  }).join("") : `<li class="note">${q ? "Aucun compte ne correspond." : "Aucun compte."}</li>`;
 }
 async function actionComptes(rpc, params, succes) {
   if (comptesOccupe) return;
@@ -2267,6 +2386,7 @@ async function actionComptes(rpc, params, succes) {
   } catch (e) { $("comptes-msg").textContent = "Action impossible (connexion ?)"; }
   finally { comptesOccupe = false; $("admin-validation").disabled = false; if (uid === sessionCourante) { await chargerComptes(); majAlertesAdmin(); } }
 }
+$("comptes-filtre").addEventListener("input", rendreComptes);
 $("admin-validation").onchange = async (e) => {
   const actif = e.target.checked;
   if (!actif && !await confirmer("Désactiver la validation ?", "Toute personne qui crée un compte et confirme son e-mail pourra lire Vigie sans votre accord. Les demandes déjà en attente restent à traiter ici.", "Désactiver", true)) {
@@ -2277,6 +2397,11 @@ $("admin-validation").onchange = async (e) => {
 $("admin-comptes").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-compte]"); if (!b || b.disabled) return;
   const c = etat.comptes?.find((x) => x.user_id === b.dataset.compte); if (!c) return;
+  if (b.dataset.supprimer) {
+    if (!await confirmer("Supprimer ce compte ?", `${c.email || "Ce compte"} et toutes ses données personnelles (préférences, avis, lectures, articles gardés) seront effacés définitivement. Ses thèmes proposés restent, sans auteur.`, "Supprimer", true)) return;
+    actionComptes("admin_supprimer_compte", { p_user: c.user_id }, "Compte supprimé.");
+    return;
+  }
   const valider = b.dataset.valider === "1";
   if (!valider && !await confirmer(c.statut === "valide" ? "Retirer l'accès ?" : "Refuser ce compte ?",
     `${c.email || "Ce compte"} ne pourra plus lire Vigie. Vous pourrez l'autoriser plus tard.`, c.statut === "valide" ? "Retirer" : "Refuser", true)) return;
