@@ -109,6 +109,8 @@
   .marque { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; }
   .marque img { width: 28px; height: 28px; border-radius: 7px; }
   .marque b { font-size: 1.1rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .marque .sous-titre { font-size: .82rem; font-weight: 500; color: var(--doux); letter-spacing: 0; }
+  @media (max-width: 400px) { .marque b { display: flex; flex-direction: column; line-height: 1.15; } .marque .sous-titre { font-size: .72rem; } }
   .compteur { font-variant-numeric: tabular-nums; color: var(--doux); font-size: .85rem; margin-right: 6px; }
   .segment { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; margin-right: 4px; }
   .segment button { padding: 6px 10px; border-radius: 8px; font-size: .8rem; font-weight: 600; color: var(--doux); }
@@ -489,7 +491,7 @@
 
 <div id="app" class="cache">
   <header class="barre">
-    <button type="button" class="marque" id="btn-accueil" title="Retour à l'accueil"><img src="icon.svg" alt=""><b id="titre-vue">Vigie</b></button>
+    <button type="button" class="marque" id="btn-accueil" title="Retour à l'accueil"><img src="icon.svg" alt=""><b id="titre-vue">Vigie <span class="sous-titre">~ Veille cyber</span></b></button>
     <span class="compteur cache" id="compteur"></span>
     <div class="segment" role="group" aria-label="Période">
       <button data-jours="1" aria-pressed="true">Jour</button>
