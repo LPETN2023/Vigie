@@ -2133,11 +2133,15 @@ function rendreComptes() {
   $("admin-comptes").innerHTML = etat.comptes.length ? etat.comptes.map((c) => {
     const [lib, cls] = c.admin ? ["Administrateur", ""] : STATUT[c.statut] || [c.statut, ""];
     const id = echapper(c.user_id);
+    // Une adresse non confirmée n'est pas prouvée : pas de validation possible (contrôlé aussi côté serveur)
+    const ok = c.confirme === true;
+    const autoriser = (texte) => ok ? `<button type="button" data-compte="${id}" data-valider="1">${texte}</button>` : "";
     const actions = c.admin ? "" : c.statut === "attente"
-      ? `<button type="button" data-compte="${id}" data-valider="1">Valider</button><button type="button" data-compte="${id}" data-valider="0">Refuser</button>`
+      ? `${autoriser("Valider")}<button type="button" data-compte="${id}" data-valider="0">Refuser</button>`
       : c.statut === "valide" ? `<button type="button" data-compte="${id}" data-valider="0">Retirer l'accès</button>`
-      : `<button type="button" data-compte="${id}" data-valider="1">Autoriser</button>`;
-    return `<li><div class="tete">${echapper(c.email || "(sans e-mail)")} <span class="etiquette${cls}">${lib}</span></div>
+      : autoriser("Autoriser");
+    return `<li><div class="tete">${echapper(c.email || "(sans e-mail)")} <span class="etiquette${cls}">${echapper(lib)}</span>
+        ${ok ? "" : '<span class="etiquette">e-mail non confirmé</span>'}</div>
       <p class="note">Inscrit le ${date(c.cree_le)}${c.decide_le && !c.admin ? ` · décision le ${date(c.decide_le)}` : ""}</p>
       ${actions ? `<span class="pastilles">${actions}</span>` : ""}</li>`;
   }).join("") : '<li class="note">Aucun compte.</li>';
