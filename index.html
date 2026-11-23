@@ -135,7 +135,15 @@
   @media (prefers-color-scheme: dark) { .bascule[aria-pressed="true"] { color: #0b1020; } }
   .outils .masques { font-size: .76rem; color: var(--doux); margin-right: auto; }
   .outils .recherche { flex: 1 0 100%; }
-  .outils .recherche input { padding: 8px 12px; }
+  .outils .recherche { position: relative; }
+  .outils .recherche input { padding: 8px 48px 8px 12px; }
+  .outils .recherche input::-webkit-search-cancel-button { display: none; }
+  #b-effacer {
+    position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
+    border: 0; border-radius: 50%; background: var(--accent); color: #fff; font-size: 1rem; font-weight: 700; line-height: 1; cursor: pointer;
+  }
+  #b-effacer.cache { display: none; }
+  @media (prefers-color-scheme: dark) { #b-effacer { color: #0b1020; } }
 
   /* ---------- Accueil ---------- */
   #accueil { max-width: 1200px; margin: 0 auto; padding: 16px 16px calc(env(safe-area-inset-bottom) + 32px); }
@@ -457,6 +465,7 @@
     <button class="icone" id="b-loupe" aria-label="Rechercher" aria-expanded="false" title="Rechercher"><svg><use href="#i-loupe"/></svg></button>
     <div class="recherche cache" id="zone-recherche">
       <input type="search" id="recherche" placeholder="Rechercher un mot-clé…" aria-label="Rechercher dans les articles" autocomplete="off">
+      <button type="button" id="b-effacer" class="cache" aria-label="Effacer la recherche" title="Effacer la recherche">✕</button>
     </div>
   </div>
   <div class="alerte cache" id="alerte"></div>
@@ -798,7 +807,7 @@ async function demarrer(session) {
     if (etat.reglages) masquerReglages();
     $("bulle").classList.add("cache");
     if (ancien) oublier(cleAttente(ancien));
-    lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; etat.zoneSeule = false;
+    lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; majEffacer(); etat.zoneSeule = false;
     etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0; etat.perso = [];
     etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false;
     etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
@@ -1495,7 +1504,14 @@ function apresVote(id) {
 $("b-lus").onclick = () => { etat.prefs.masquer_lus = !etat.prefs.masquer_lus; majBascules(); sauverPrefs("masquer_lus"); majListes(); };
 $("b-rejetes").onclick = () => { etat.prefs.masquer_rejetes = !etat.prefs.masquer_rejetes; majBascules(); sauverPrefs("masquer_rejetes"); majListes(); };
 let minuteurRecherche = null;
+function majEffacer() { $("b-effacer").classList.toggle("cache", !$("recherche").value); }
+$("b-effacer").onclick = () => {
+  clearTimeout(minuteurRecherche);
+  $("recherche").value = ""; etat.recherche = ""; majEffacer(); majListes();
+  $("recherche").focus();
+};
 $("recherche").addEventListener("input", () => {
+  majEffacer();
   clearTimeout(minuteurRecherche);
   minuteurRecherche = setTimeout(() => { etat.recherche = $("recherche").value; majListes(); }, 150);
 });
@@ -1504,7 +1520,7 @@ $("b-loupe").onclick = () => {
   $("zone-recherche").classList.toggle("cache", !ouvrir);
   $("b-loupe").setAttribute("aria-expanded", String(ouvrir));
   if (ouvrir) $("recherche").focus();
-  else if (etat.recherche || $("recherche").value) { $("recherche").value = ""; etat.recherche = ""; majListes(); }
+  else if (etat.recherche || $("recherche").value) { $("recherche").value = ""; etat.recherche = ""; majEffacer(); majListes(); }
   else majOutils();
 };
 new ResizeObserver(() => document.documentElement.style.setProperty("--outils", $("outils").offsetHeight + "px")).observe($("outils"));
@@ -2014,7 +2030,7 @@ $("bulle").onclick = (e) => {
 };
 // Ferme l'article et filtre la liste chargée (période en cours) sur le passage surligné
 function chercherDansArticles(t) {
-  $("recherche").value = t; etat.recherche = t;
+  $("recherche").value = t; etat.recherche = t; majEffacer();
   $("zone-recherche").classList.remove("cache");
   $("b-loupe").setAttribute("aria-expanded", "true");
   // Le gestionnaire popstate principal ferme d'abord le lecteur, puis on rafraîchit la liste
