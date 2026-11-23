@@ -59,6 +59,23 @@
     width: 48px; height: 44px; border-radius: 12px; background: var(--surface-2); display: inline-grid; place-items: center;
   }
   .vote svg { width: 22px; height: 22px; }
+  .vote.etiq { width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; font-weight: 600; font-size: .88rem; }
+  /* Fenêtre de dialogue (remplace alert / confirm / prompt du navigateur) */
+  #dialogue { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.45); }
+  #dialogue .boite { width: 100%; max-width: 420px; background: var(--surface); border-radius: 18px; padding: 20px 18px 16px; box-shadow: var(--ombre); }
+  #dialogue h3 { margin: 0 0 8px; font-size: 1.05rem; }
+  #dialogue p { margin: 0 0 12px; color: var(--doux); font-size: .92rem; line-height: 1.45; white-space: pre-line; }
+  #dialogue input { margin-bottom: 12px; }
+  #dialogue .actions { display: flex; gap: 8px; }
+  #dialogue .actions .btn { flex: 1; }
+  #dialogue .btn.danger { background: var(--non); color: #fff; }
+  /* Santé de la collecte */
+  .sante summary { color: var(--doux); }
+  .sante.probleme summary { color: var(--non); }
+  .sante ul { margin: 6px 0 0; padding-left: 18px; }
+  /* Actions du lecteur (garder, partager) */
+  #lecteur .barre-l button.action { font-size: .85rem; padding: 8px 10px; border-radius: 10px; color: var(--accent); font-weight: 600; }
+  #lecteur .barre-l button.action[aria-pressed="true"] { background: var(--accent-doux); }
   .vote.plus[data-actif="1"] { background: var(--ok-doux); color: var(--ok); }
   .vote.moins[data-actif="1"] { background: var(--non-doux); color: var(--non); }
 
@@ -158,10 +175,8 @@
   .propositions .choix .retirer { background: var(--non-doux); color: var(--non); }
   .propositions .etat { font-size: .8rem; color: var(--doux); }
 
-  .filtres { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 14px; scrollbar-width: none; }
-  .filtres::-webkit-scrollbar { display: none; }
-  /* Souris (PC) : pas de défilement horizontal au doigt, les catégories passent à la ligne */
-  @media (pointer: fine) { .filtres { flex-wrap: wrap; overflow: visible; } }
+  /* Les filtres passent à la ligne (pas de défilement horizontal caché au doigt) */
+  .filtres { display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 2px 2px 14px; }
   .filtres button {
     flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; font-size: .85rem; font-weight: 500;
     background: var(--surface); border: 1px solid var(--filet); color: var(--doux);
@@ -381,7 +396,8 @@
 
 <section id="attente" class="cache chargement">
   <div style="max-width:340px;text-align:center;padding:16px">
-    <p>Votre compte existe, mais il n'est pas encore autorisé à lire le journal.</p>
+    <p id="attente-msg">Votre compte existe, mais il n'est pas encore autorisé à lire le journal.</p>
+    <p><button class="btn principal cache" type="button" id="btn-reessayer">Réessayer</button></p>
     <button class="lien" id="btn-deco-attente">Se déconnecter</button>
   </div>
 </section>
@@ -437,6 +453,7 @@
   <div class="alerte cache" id="fraicheur"></div>
 
   <main id="accueil">
+    <details class="revue sante cache" id="sante"></details>
     <section class="essentiel cache" id="essentiel"></section>
     <section class="revue propositions cache" id="propositions"></section>
     <details class="revue cache" id="revue"></details>
@@ -456,6 +473,8 @@
   <div class="barre-l">
     <button class="retour" id="btn-retour">‹ Retour</button>
     <span class="espace"></span>
+    <button class="action" type="button" id="l-garder" aria-pressed="false">🔖 Garder</button>
+    <button class="action" type="button" id="l-partager">Partager</button>
     <a id="l-traduire" target="_blank" rel="noopener noreferrer" class="cache">Traduire ↗</a>
     <a id="l-site" target="_blank" rel="noopener noreferrer">Voir sur le site ↗</a>
   </div>
@@ -520,6 +539,17 @@
 </div>
 <button id="bulle" class="cache" type="button">+ Ajouter aux thèmes</button>
 <div id="toast" class="cache" role="status" aria-live="polite"></div>
+<div id="dialogue" class="cache" role="alertdialog" aria-modal="true" aria-labelledby="dialogue-titre" aria-describedby="dialogue-texte">
+  <form class="boite" id="dialogue-form" autocomplete="off">
+    <h3 id="dialogue-titre"></h3>
+    <p id="dialogue-texte"></p>
+    <input id="dialogue-champ" class="cache" maxlength="300" aria-labelledby="dialogue-titre">
+    <div class="actions">
+      <button class="btn" type="button" id="dialogue-annuler">Annuler</button>
+      <button class="btn principal" type="submit" id="dialogue-ok">OK</button>
+    </div>
+  </form>
+</div>
 
 <div id="demarrage" class="chargement" style="min-height:100vh">Chargement…</div>
 
@@ -571,6 +601,7 @@ const etat = {
   // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
   tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
   perso: [], // thèmes personnels suivis : {id, nom, categorie, partage, actif, mien}
+  gardes: new Set(), articlesGardes: [], gardesSeuls: false, // articles gardés par le lecteur
   admin: false, adminThemes: [], rechargerApres: false // administration (l'affichage seulement : chaque action est vérifiée côté serveur)
 };
 let zoneDeps = new Set();
@@ -650,6 +681,40 @@ function toast(msg) {
   clearTimeout(minuteurToast);
   minuteurToast = setTimeout(() => t.classList.add("cache"), 2600);
 }
+/* ---------- Fenêtre de dialogue (remplace alert / confirm / prompt) ---------- */
+// Résout : true (confirmé), la saisie (si `saisie` est une chaîne) ou null (annulé)
+let dialogueEnCours = null;
+function dialogue({ titre, texte = "", saisie = null, ok = "OK", danger = false, max = 300 }) {
+  if (dialogueEnCours) dialogueEnCours(null);
+  $("dialogue-titre").textContent = titre;
+  $("dialogue-texte").textContent = texte;
+  $("dialogue-texte").classList.toggle("cache", !texte);
+  const champ = $("dialogue-champ");
+  champ.classList.toggle("cache", saisie === null);
+  champ.maxLength = max;
+  champ.value = saisie ?? "";
+  $("dialogue-ok").textContent = ok;
+  $("dialogue-ok").classList.toggle("danger", danger);
+  $("dialogue").classList.remove("cache");
+  const retour = document.activeElement;
+  setTimeout(() => (saisie !== null ? champ : $("dialogue-ok")).focus(), 0);
+  return new Promise((resoudre) => {
+    dialogueEnCours = (valeur) => {
+      dialogueEnCours = null;
+      $("dialogue").classList.add("cache");
+      if (retour && typeof retour.focus === "function") retour.focus();
+      resoudre(valeur);
+    };
+  });
+}
+const confirmer = (titre, texte, ok = "Confirmer", danger = false) => dialogue({ titre, texte, ok, danger }).then((v) => v !== null);
+$("dialogue-form").onsubmit = (e) => {
+  e.preventDefault();
+  if (dialogueEnCours) dialogueEnCours($("dialogue-champ").classList.contains("cache") ? true : $("dialogue-champ").value);
+};
+$("dialogue-annuler").onclick = () => { if (dialogueEnCours) dialogueEnCours(null); };
+$("dialogue").addEventListener("click", (e) => { if (e.target === $("dialogue") && dialogueEnCours) dialogueEnCours(null); });
+
 function echapper(t) {
   return String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -698,6 +763,11 @@ $("form-connexion").onsubmit = async (e) => {
   if (error) $("msg-connexion").textContent = /Invalid login/i.test(error.message) ? "E-mail ou mot de passe incorrect." : error.message;
 };
 $("btn-deco").onclick = $("btn-deco-attente").onclick = $("b-deco").onclick = () => sb.auth.signOut();
+$("btn-reessayer").onclick = async () => {
+  $("btn-reessayer").disabled = true;
+  try { const { data } = await sb.auth.getSession(); sessionCourante = null; await demarrer(data?.session ?? null); }
+  finally { $("btn-reessayer").disabled = false; }
+};
 
 let sessionCourante = null;
 sb.auth.onAuthStateChange((evt, session) => setTimeout(() => demarrer(session), 0));
@@ -716,6 +786,8 @@ async function demarrer(session) {
     lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; etat.zoneSeule = false;
     etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0; etat.perso = [];
     etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false;
+    etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
+    if (dialogueEnCours) dialogueEnCours(null);
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
   }
@@ -723,7 +795,15 @@ async function demarrer(session) {
   etat.prefsChargees = false; majBascules();
   afficher("demarrage");
   const { data, error } = await sb.rpc("est_lecteur");
-  if (error || !data) { afficher("attente"); return; }
+  if (sessionCourante !== uid) return;
+  // Erreur réseau ≠ compte non autorisé : messages distincts, avec « Réessayer » dans le premier cas
+  if (error || !data) {
+    $("attente-msg").textContent = error
+      ? "Connexion au serveur impossible. Vérifiez le réseau, puis réessayez."
+      : "Votre compte existe, mais il n'est pas encore autorisé à lire le journal.";
+    $("btn-reessayer").classList.toggle("cache", !error);
+    afficher("attente"); return;
+  }
   etat.admin = false;
   sb.rpc("est_admin").then((r) => {
     if (sessionCourante !== uid) return;
@@ -756,29 +836,41 @@ async function charger() {
   }
   const versionLancee = versionPrefs;
   const versionSuivisLancee = versionSuivis;
-  const [princ, arts, exe, syn, rev, props, exeOk, pr] = await Promise.all([
+  // Les rattrapages (texte/images des anciens articles) ne sont pas des éditions : exclus des « Mis à jour » et de la santé
+  const editions = (cols) => sb.from("executions").select(cols).or("message.is.null,message.not.like.Rattrapage*");
+  const [princ, arts, exe, syn, rev, props, exeOk, pr, gd] = await Promise.all([
     chargerPrincipaux(sessionCourante),
     requete.order("edition", { ascending: false }).order("a_la_une", { ascending: false })
       .order("score", { ascending: false }).limit(LIMITE),
-    sb.from("executions").select("debut,fin,statut").order("debut", { ascending: false }).limit(1),
+    editions("debut,fin,statut").order("debut", { ascending: false }).limit(1),
     derniere ? sb.from("syntheses").select("edition,points").eq("edition", derniere).maybeSingle() : Promise.resolve({ data: null }),
     sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
     sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20),
-    sb.from("executions").select("debut,fin").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
-    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes").eq("user_id", sessionCourante).maybeSingle()
+    editions("debut,fin,nb_articles,details").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
+    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes").eq("user_id", sessionCourante).maybeSingle(),
+    sb.from("gardes").select("article_id").eq("user_id", sessionCourante).order("cree_le", { ascending: false }).limit(500)
   ]);
   if (moi !== numeroRequete) return;
   if (arts.error) { $("grille").innerHTML = `<div class="chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
 
+  // Votes du lecteur, par paquets de 200 identifiants envoyés en parallèle
   const votes = new Map();
   const ids = arts.data.map((a) => a.id);
-  for (let i = 0; i < ids.length; i += 200) {
-    const v = await sb.from("votes").select("article_id,avis,raisons,commentaire")
-      .eq("user_id", sessionCourante).in("article_id", ids.slice(i, i + 200));
-    for (const x of v.data ?? []) votes.set(x.article_id, x);
+  const paquets = [];
+  for (let i = 0; i < ids.length; i += 200) paquets.push(ids.slice(i, i + 200));
+  const [reponsesVotes, serveurLus] = await Promise.all([
+    Promise.all(paquets.map((p) => sb.from("votes").select("article_id,avis,raisons,commentaire")
+      .eq("user_id", sessionCourante).in("article_id", p))),
+    chargerLectures(ids)
+  ]);
+  for (const v of reponsesVotes) for (const x of v.data ?? []) votes.set(x.article_id, x);
+  if (reponsesVotes.some((v) => v.error)) {
+    // Votes partiels : on garde ceux déjà connus pour ne pas réafficher des 👎 ni écraser un avis
+    for (const [id, x] of etat.votes) if (!votes.has(id)) votes.set(id, x);
+    toast("Vos avis n'ont pas tous pu être chargés.");
   }
-  const serveurLus = await chargerLectures(ids);
   if (moi !== numeroRequete) return;
+  if (!gd.error) etat.gardes = new Set((gd.data ?? []).map((g) => Number(g.article_id)));
   if (versionSuivisLancee === versionSuivis) appliquerPrincipaux(princ);
   etat.tous = arts.data;
   etat.articles = sansMasques(etat.tous);
@@ -794,7 +886,10 @@ async function charger() {
   synchroniserLocal();
 
   afficherMaj(exe.data?.[0], arts.data.length >= LIMITE, derniere);
-  afficherFraicheur(exeOk.data?.[0]);
+  afficherFraicheur(exeOk.error ? undefined : exeOk.data?.[0] ?? null);
+  afficherSante(exeOk.data?.[0]);
+  if (etat.gardesSeuls) await chargerArticlesGardes();
+  if (moi !== numeroRequete) return;
   dernierChargement = Date.now();
   rendreAccueil();
   if (etat.vue === "journal") ouvrirJournal(0, false);
@@ -821,12 +916,39 @@ function afficherMaj(exe, tronque, derniere) {
   $("titre-liste").textContent = etat.jours === 1 && derniere ? "Articles du " + dateLongue(derniere).replace(/^\w+ /, "") : "Les 7 derniers jours";
 }
 
+// ok : dernière édition réussie ; null : aucune ; undefined : information indisponible (rien n'est affiché)
 function afficherFraicheur(ok) {
-  const t = ok ? new Date(ok.fin || ok.debut).getTime() : NaN;
-  const h = (Date.now() - t) / 36e5;
-  const txt = h > 26 ? `Pas de nouvelle édition depuis ${heure(ok.fin || ok.debut)}${h >= 48 ? ` (${Math.floor(h / 24)} jours)` : ""}.` : "";
+  let txt = "";
+  if (ok === null) txt = "Aucune édition n'a encore été publiée.";
+  else if (ok) {
+    const t = new Date(ok.fin || ok.debut), h = (Date.now() - t.getTime()) / 36e5;
+    const matin = new Date(); matin.setHours(7, 30, 0, 0);
+    const minuit = new Date(); minuit.setHours(0, 0, 0, 0);
+    if (h > 26) txt = `Pas de nouvelle édition depuis ${heure(ok.fin || ok.debut)}${h >= 48 ? ` (${Math.floor(h / 24)} jours)` : ""}.`;
+    // L'édition est normalement prête vers 5 h : passé 7 h 30, son absence est signalée
+    else if (Date.now() > matin.getTime() && t < minuit) txt = `L'édition de ce matin n'est pas encore parue. La dernière date d'hier, ${t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}.`;
+  }
   $("fraicheur").textContent = txt;
   $("fraicheur").classList.toggle("cache", !txt);
+}
+// Santé de la dernière édition : articles, sources en erreur, sources muettes depuis 48 h
+function afficherSante(ok) {
+  const bloc = $("sante"), d = ok?.details;
+  if (!ok || !d || typeof d !== "object") { bloc.classList.add("cache"); return; }
+  const erreurs = (Array.isArray(d.erreurs) ? d.erreurs : []).filter((x) => x && typeof x.source === "string").slice(0, 40);
+  const muettes = (Array.isArray(d.muettes) ? d.muettes : []).filter((x) => typeof x === "string").slice(0, 40);
+  const n = Number(ok.nb_articles ?? d.articles) || 0, ne = erreurs.length, nm = muettes.length;
+  const parts = [`${n} article${n > 1 ? "s" : ""}`];
+  if (ne) parts.push(`${ne} source${ne > 1 ? "s" : ""} en erreur`);
+  if (nm) parts.push(`${nm} source${nm > 1 ? "s" : ""} muette${nm > 1 ? "s" : ""} depuis 48 h`);
+  const total = Number(d.sources) || 0;
+  bloc.innerHTML = `<summary>📡 Dernière édition (${echapper(heure(ok.fin || ok.debut))}) · ${parts.join(" · ")}</summary>` +
+    (ne || nm
+      ? `<ul>${erreurs.map((e) => `<li><strong>${echapper(e.source)}</strong> — ${echapper(e.erreur || "erreur")}</li>`).join("")}` +
+        `${muettes.map((m) => `<li><strong>${echapper(m)}</strong> — aucun article depuis 48 h</li>`).join("")}</ul>`
+      : `<p class="resume-revue">${total ? `Les ${total} sources ont répondu.` : "Toutes les sources ont répondu."}</p>`);
+  bloc.classList.toggle("probleme", ne + nm > 0);
+  bloc.classList.remove("cache");
 }
 
 /* ---------- Préférences ---------- */
@@ -910,18 +1032,22 @@ function regrouper(tab) {
 function listeFiltree() {
   const mots = normaliser(etat.recherche).split(" ").filter(Boolean);
   const pts = (a) => (a.score || 0) + (dansZone(a) ? BONUS_ZONE : 0);
-  const base = etat.articles
+  const source = etat.gardesSeuls ? etat.articlesGardes : etat.articles;
+  const base = source
     .filter((a) => (!etat.theme || (a.theme || "Autre") === etat.theme) && (!etat.zoneSeule || dansZone(a))
       && mots.every((m) => texteRecherche(a).includes(m)))
     .sort((x, y) => (y.edition || "").localeCompare(x.edition || "") || (y.a_la_une ? 1 : 0) - (x.a_la_une ? 1 : 0) || pts(y) - pts(x));
-  // Les groupes sont formés sur la base filtrée, puis masqués en entier :
-  // « rejetés » si un membre a reçu 👎, « lus » si l'article principal a été lu
-  const r = regrouper(base);
+  // « Masquer 👎 » retire seulement les articles rejetés : le reste de leur groupe reste visible,
+  // regroupé autour d'un autre article. « Masquer lus » masque un groupe dont l'article principal a été lu.
+  // Les articles gardés ne sont jamais masqués dans le filtre « Gardés ».
   const rejete = (a) => etat.votes.get(a.id)?.avis === -1;
-  const liste = r.liste.filter((p) => !(etat.prefs.masquer_lus && lus.has(p.id))
-    && !(etat.prefs.masquer_rejetes && (p.sujet ? r.groupes.get(p.sujet).some(rejete) : rejete(p))));
+  // Vue « Gardés » : chaque article gardé apparaît seul (pas de regroupement par sujet)
+  if (etat.gardesSeuls) { etat.nbAutres = new Map(); etat.masques = 0; return base; }
+  const avantMasquage = regrouper(base).liste.length;
+  const r = regrouper(etat.prefs.masquer_rejetes ? base.filter((a) => !rejete(a)) : base);
+  const liste = r.liste.filter((p) => !(etat.prefs.masquer_lus && lus.has(p.id)));
   etat.nbAutres = r.nb;
-  etat.masques = r.liste.length - liste.length;
+  etat.masques = Math.max(0, avantMasquage - liste.length);
   return liste;
 }
 function majOutils() {
@@ -977,7 +1103,9 @@ function rendreListe() {
   const vides = etat.perso.filter((t) => t.categorie && t.actif && !presents.has(normaliser(t.nom)));
   const nbZone = zoneDeps.size ? regrouper(etat.articles.filter(dansZone)).liste.length : 0;
   if (!zoneDeps.size) etat.zoneSeule = false;
-  $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
+  if (!etat.gardes.size) etat.gardesSeuls = false;
+  $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule && !etat.gardesSeuls}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
+    (etat.gardes.size ? `<button data-gardes="1" aria-pressed="${etat.gardesSeuls}">🔖 Gardés · ${etat.gardes.size}</button>` : "") +
     (zoneDeps.size ? `<button data-zone="1" aria-pressed="${etat.zoneSeule}">📍 Ma zone · ${nbZone}</button>` : "") +
     themes.map(([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`).join("") +
     vides.map((t) => `<button disabled aria-disabled="true" title="Aucun article pour l'instant">${echapper(t.nom)} · 0</button>`).join("");
@@ -996,7 +1124,30 @@ function rendreListe() {
         <h3>${echapper(a.titre)}</h3>
         ${n ? `<div class="meta autres">+${n} autre${n > 1 ? "s" : ""} source${n > 1 ? "s" : ""}</div>` : ""}
       </div></button>`;
-  }).join("") : `<div class="chargement">${etat.articles.length ? "Aucun article ne correspond à vos filtres." : "Aucun article pour cette période."}</div>`;
+  }).join("") : `<div class="chargement">${etat.gardesSeuls ? "Aucun article gardé ne correspond." : etat.articles.length ? "Aucun article ne correspond à vos filtres." : "Aucun article pour cette période."}</div>`;
+}
+// Articles gardés : chargés par identifiant, quelle que soit leur date (hors période affichée),
+// avec les avis et lectures du lecteur pour ceux qui ne sont pas déjà chargés. Renvoie true si tout a réussi.
+async function chargerArticlesGardes() {
+  const uid = sessionCourante, ids = [...etat.gardes];
+  if (!ids.length) { etat.articlesGardes = []; return true; }
+  const lots = (tab) => { const l = []; for (let i = 0; i < tab.length; i += 200) l.push(tab.slice(i, i + 200)); return l; };
+  const connus = new Set(etat.tous.map((a) => a.id));
+  const manquants = ids.filter((id) => !connus.has(id));
+  try {
+    const [rep, repVotes, serveurLus] = await Promise.all([
+      Promise.all(lots(ids).map((l) => sb.from("articles").select(COLONNES).in("id", l))),
+      Promise.all(lots(manquants).map((l) => sb.from("votes").select("article_id,avis,raisons,commentaire").eq("user_id", uid).in("article_id", l))),
+      manquants.length ? chargerLectures(manquants) : Promise.resolve(null)
+    ]);
+    if (uid !== sessionCourante) return false;
+    if (rep.some((r) => r.error)) { toast("Articles gardés indisponibles pour le moment."); return false; }
+    etat.articlesGardes = rep.flatMap((r) => r.data ?? []);
+    for (const v of repVotes) for (const x of v.data ?? []) etat.votes.set(x.article_id, x);
+    if (serveurLus) for (const id of serveurLus) lus.add(id);
+    if (repVotes.some((v) => v.error)) toast("Vos avis sur les articles gardés n'ont pas tous pu être chargés.");
+    return true;
+  } catch (e) { toast("Articles gardés indisponibles (connexion ?)"); return false; }
 }
 
 // Propositions de retrait de source : rien n'est retiré sans l'accord du lecteur
@@ -1019,18 +1170,27 @@ $("propositions").addEventListener("click", async (e) => {
   b.disabled = true;
   const { data, error } = await sb.from("propositions")
     .update({ decision, decide_le: decision ? new Date().toISOString() : null }).eq("id", +b.dataset.prop).select("id");
-  if (error) { b.disabled = false; alert("Décision non enregistrée : " + error.message); return; }
+  if (error) { b.disabled = false; toast("Décision non enregistrée : " + error.message); return; }
   // 0 ligne modifiée : la proposition a déjà été traitée par la révision entre-temps
-  if (!data?.length) { alert("Cette proposition a déjà été traitée. La page va se mettre à jour."); charger(); return; }
+  if (!data?.length) { toast("Cette proposition a déjà été traitée : la page se met à jour."); charger(); return; }
   const x = etat.propositions.find((y) => y.id === +b.dataset.prop);
   if (x) x.decision = decision;
   rendrePropositions();
 });
 
-$("filtres").addEventListener("click", (e) => {
+$("filtres").addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
-  if (b.dataset.zone) etat.zoneSeule = !etat.zoneSeule;
-  else { etat.theme = b.dataset.theme || null; etat.zoneSeule = false; }
+  if (b.dataset.gardes) {
+    const uid = sessionCourante;
+    etat.gardesSeuls = !etat.gardesSeuls; etat.theme = null; etat.zoneSeule = false;
+    if (etat.gardesSeuls) {
+      b.disabled = true;
+      const ok = await chargerArticlesGardes();
+      if (uid !== sessionCourante) return;
+      if (!ok) etat.gardesSeuls = false;
+    }
+  } else if (b.dataset.zone) { etat.zoneSeule = !etat.zoneSeule; etat.gardesSeuls = false; }
+  else { etat.theme = b.dataset.theme || null; etat.zoneSeule = false; etat.gardesSeuls = false; }
   rendreListe();
 });
 $("grille").addEventListener("click", (e) => {
@@ -1044,6 +1204,12 @@ $("essentiel").addEventListener("click", (e) => {
 });
 
 /* ---------- Journal ---------- */
+// Article étranger : titre et résumé sont toujours en français ; le texte intégral n'est traduit que si contenu_traduit
+function etiquetteLangue(a) {
+  if (!a.langue || a.langue === "fr") return "";
+  const code = echapper(String(a.langue).slice(0, 3).toUpperCase());
+  return a.contenu_traduit ? `texte traduit (${code})` : `texte en VO (${code})`;
+}
 function fiche(a, i) {
   const v = etat.votes.get(a.id);
   return `<section class="page" data-i="${i}"><article class="fiche">
@@ -1052,7 +1218,7 @@ function fiche(a, i) {
       <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
         <span style="color:var(--accent);font-weight:600">${echapper(a.theme || "Actualité")}</span></div>
       <h2>${echapper(a.titre)}</h2>
-      <div class="meta" style="margin-bottom:10px">${[echapper(a.source), heure(a.publie_le), a.langue && a.langue !== "fr" ? "traduit" : "",
+      <div class="meta" style="margin-bottom:10px">${[echapper(a.source), heure(a.publie_le), etiquetteLangue(a),
         etat.nbAutres.get(a.id) ? `+${etat.nbAutres.get(a.id)} autre${etat.nbAutres.get(a.id) > 1 ? "s" : ""} source${etat.nbAutres.get(a.id) > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ")}</div>
       <p class="resume">${echapper(a.resume)}</p>
     </div>
@@ -1110,6 +1276,7 @@ function aller(delta) { const p = $("journal"); p.scrollTo({ left: (etat.index +
 $("prec").onclick = () => aller(-1);
 $("suiv").onclick = () => aller(1);
 document.addEventListener("keydown", (e) => {
+  if (dialogueEnCours) { if (e.key === "Escape") dialogueEnCours(null); return; }
   if (e.key === "Escape") { if (etat.feuille) fermerFeuille(); else if (etat.reglages) fermerReglages(); else if (etat.ouvert || etat.vue === "journal") history.back(); return; }
   if (etat.vue !== "journal" || etat.ouvert || etat.feuille || etat.reglages || e.target.matches("input, textarea")) return;
   if (e.key === "ArrowRight") aller(1);
@@ -1136,7 +1303,7 @@ async function ouvrirLecteur(a, remplace = false) {
   lt.href = "https://translate.google.com/translate?sl=auto&tl=fr&u=" + encodeURIComponent(a.url);
   lt.classList.add("cache");
   $("lecture").innerHTML = enteteLecture(a) + '<div class="texte"><p class="indispo">Chargement du texte…</p></div>' + memeSujet(a);
-  majBarreVote();
+  majBarreVote(); majGarder();
   $("lecteur").classList.remove("cache");
   $("lecteur").scrollTop = 0;
   document.body.style.overflow = "hidden";
@@ -1146,12 +1313,13 @@ async function ouvrirLecteur(a, remplace = false) {
   const contenu = data?.contenu;
   const zone = $("lecture").querySelector(".texte");
   if (etranger && !data?.contenu_traduit) lt.classList.remove("cache");
-  let avis = "";
-  if (etranger && data?.contenu_traduit) avis = `<p class="avis-ia">Traduit de ${LANGUES[a.langue] || "la langue d'origine"} par IA. Le texte original fait foi.</p>`;
-  else if (etranger && contenu) avis = `<p class="avis-ia">Texte en version originale. Le bouton « Traduire » en haut ouvre une traduction automatique.</p>`;
+  let avis = a.payant === true
+    ? '<p class="avis-ia">🔒 Article payant : sans abonnement, seul le début est accessible sur le site.</p>' : "";
+  if (etranger && data?.contenu_traduit) avis += `<p class="avis-ia">Traduit de ${Object.hasOwn(LANGUES, a.langue) ? LANGUES[a.langue] : "la langue d'origine"} par IA. Le texte original fait foi.</p>`;
+  else if (etranger && contenu) avis += `<p class="avis-ia">Texte en version originale. Le bouton « Traduire » en haut ouvre une traduction automatique.</p>`;
   zone.innerHTML = contenu
     ? avis + contenu.split(/\n\s*\n|\n/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${echapper(p)}</p>`).join("")
-    : `<p class="indispo">Le texte complet n'est pas disponible pour cet article (site protégé, ou article publié avant cette fonction).</p>
+    : `${avis}<p class="indispo">Le texte complet n'est pas disponible pour cet article (site protégé, ou article publié avant cette fonction).</p>
        <p><a class="btn principal" href="${echapper(urlSure(a.url))}" target="_blank" rel="noopener noreferrer">Lire sur le site ↗</a></p>`;
 }
 function enteteLecture(a) {
@@ -1178,9 +1346,42 @@ function majBarreVote() {
   const a = etat.ouvert; if (!a) return;
   const v = etat.votes.get(a.id);
   $("barre-vote").innerHTML =
-    `<button class="vote plus" data-id="${a.id}" data-avis="1" data-actif="${v?.avis === 1 ? 1 : 0}" aria-label="J'aime">${svgVote("haut")}</button>
-     <button class="vote moins" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}" aria-label="Je n'aime pas">${svgVote("bas")}</button>`;
+    `<button class="vote plus etiq" data-id="${a.id}" data-avis="1" data-actif="${v?.avis === 1 ? 1 : 0}">${svgVote("haut")}<span>J'aime</span></button>
+     <button class="vote moins etiq" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}">${svgVote("bas")}<span>Je n'aime pas</span></button>`;
 }
+// Garder un article (par compte) et le partager (lien d'origine + résumé)
+function majGarder() {
+  const a = etat.ouvert, g = !!a && etat.gardes.has(a.id);
+  $("l-garder").setAttribute("aria-pressed", String(g));
+  $("l-garder").textContent = g ? "🔖 Gardé" : "🔖 Garder";
+}
+$("l-garder").onclick = async () => {
+  const a = etat.ouvert, uid = sessionCourante; if (!a || !uid) return;
+  const garde = etat.gardes.has(a.id);
+  $("l-garder").disabled = true;
+  try {
+    const { error } = garde
+      ? await sb.from("gardes").delete().eq("user_id", uid).eq("article_id", a.id)
+      : await sb.from("gardes").insert({ user_id: uid, article_id: a.id });
+    if (error && error.code !== "23505") { toast("Non enregistré : " + error.message); return; }
+    if (uid !== sessionCourante) return;
+    if (garde) { etat.gardes.delete(a.id); etat.articlesGardes = etat.articlesGardes.filter((x) => x.id !== a.id); }
+    else { etat.gardes.add(a.id); if (!etat.articlesGardes.some((x) => x.id === a.id)) etat.articlesGardes.push(a); }
+    toast(garde ? "Retiré des articles gardés." : "Article gardé : retrouvez-le avec le filtre « 🔖 Gardés ».");
+  } catch (e) { toast("Non enregistré (connexion ?)"); }
+  finally { $("l-garder").disabled = false; majGarder(); }
+};
+$("l-partager").onclick = async () => {
+  const a = etat.ouvert; if (!a) return;
+  const url = urlSure(a.url); if (url === "#") { toast("Lien indisponible."); return; }
+  const texte = `${a.titre}\n${a.source}\n\nRésumé automatique : ${String(a.resume || "").slice(0, 400)}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: a.titre, text: texte, url }); } catch (e) { /* partage annulé */ }
+    return;
+  }
+  try { await navigator.clipboard.writeText(`${texte}\n\n${url}`); toast("Titre, résumé et lien copiés."); }
+  catch (e) { toast("Copie impossible sur cet appareil."); }
+};
 $("barre-vote").addEventListener("click", (e) => { const b = e.target.closest(".vote"); if (b) ouvrirFeuille(+b.dataset.id, +b.dataset.avis); });
 function fermerLecteur() {
   etat.ouvert = null;
@@ -1193,6 +1394,8 @@ $("btn-retour").onclick = () => history.back();
 
 /* ---------- Historique (bouton retour du téléphone) ---------- */
 window.addEventListener("popstate", (e) => {
+  // Retour pendant une fenêtre de dialogue : on l'annule et on reste où l'on était
+  if (dialogueEnCours) { dialogueEnCours(null); history.pushState(e.state, ""); return; }
   if (etat.feuille) { fermerFeuille(); history.pushState(e.state, ""); return; }
   if (etat.reglages) { masquerReglages(); return; }
   if (etat.ouvert) { fermerLecteur(); return; }
@@ -1234,14 +1437,14 @@ $("btn-enregistrer").onclick = async () => {
   $("btn-enregistrer").disabled = true;
   const { error } = await sb.from("votes").upsert(ligne, { onConflict: "article_id,user_id" });
   $("btn-enregistrer").disabled = false;
-  if (error) { alert("Avis non enregistré : " + error.message); return; }
+  if (error) { toast("Avis non enregistré : " + error.message); return; }
   etat.votes.set(f.id, ligne);
   fermerFeuille(); apresVote(f.id);
 };
 $("btn-retirer").onclick = async () => {
   const f = etat.feuille; if (!f) return;
   const { error } = await sb.from("votes").delete().eq("article_id", f.id).eq("user_id", sessionCourante);
-  if (error) { alert("Erreur : " + error.message); return; }
+  if (error) { toast("Avis non retiré : " + error.message); return; }
   etat.votes.delete(f.id);
   fermerFeuille(); apresVote(f.id);
 };
@@ -1642,8 +1845,10 @@ function rendreAdmin() {
         ${perso && !t.partage ? '<span class="etiquette">privé</span>' : ""}
         ${t.hors_plafond ? '<span class="etiquette alerte">hors plafond : ignoré par la collecte</span>' : ""}</div>
       <div class="note">${infos.join(" · ")}</div>
+      ${t.description ? `<div class="note">${echapper(t.description)}</div>` : ""}
       <div class="pastilles">
         <button type="button" data-act="renommer">Renommer</button>
+        <button type="button" data-act="decrire">${t.description ? "Modifier la description" : "Décrire"}</button>
         <button type="button" data-act="actif">${t.actif ? "Désactiver" : "Réactiver"}</button>
         ${perso ? `<button type="button" data-act="categorie">${t.categorie ? "Retirer des catégories" : "En faire une catégorie"}</button>
                    <button type="button" data-act="principal">Promouvoir en principal</button>` : ""}
@@ -1682,34 +1887,40 @@ async function actionAdmin(rpc, params, succes) {
     if (uid === sessionCourante) rendreAdmin(); // réactive les boutons
   }
 }
-$("admin-doublons").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-garder]"); if (!b) return;
+$("admin-doublons").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-garder]"); if (!b || adminOccupe) return;
   const garder = etat.adminThemes.find((t) => t.id === Number(b.dataset.garder));
   const fondre = etat.adminThemes.find((t) => t.id === Number(b.dataset.fondre));
   if (!garder || !fondre) return;
-  if (!confirm(`Fusionner « ${fondre.nom} » dans « ${garder.nom} » ?\nSes lecteurs et ses articles passent sur « ${garder.nom} », puis il est supprimé.`)) return;
+  if (!await confirmer("Fusionner ces thèmes ?", `« ${fondre.nom} » sera fusionné dans « ${garder.nom} » : ses lecteurs et ses articles passent sur « ${garder.nom} », puis il est supprimé.`, "Fusionner", true)) return;
   actionAdmin("admin_fusionner_themes", { p_source: fondre.id, p_cible: garder.id }, "Thèmes fusionnés.");
 });
-$("admin-liste").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-act]"); if (!b) return;
+$("admin-liste").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-act]"); if (!b || adminOccupe) return;
   const li = b.closest("li[data-id]"), t = etat.adminThemes.find((x) => x.id === Number(li?.dataset.id));
   if (!t) return;
   const act = b.dataset.act;
   if (act === "renommer") {
-    const saisi = prompt(`Nouveau nom pour « ${t.nom} » (60 caractères max.) :`, t.nom);
-    const nom = (saisi ?? "").replace(/\s+/g, " ").trim();
+    const saisi = await dialogue({ titre: `Renommer « ${t.nom} »`, texte: "60 caractères au maximum. Les articles déjà classés suivent le nouveau nom.", saisie: t.nom, ok: "Renommer", max: 60 });
+    const nom = (typeof saisi === "string" ? saisi : "").replace(/\s+/g, " ").trim();
     if (!nom || nom === t.nom) return;
     actionAdmin("admin_modifier_theme", { p_id: t.id, p_nom: nom }, "Thème renommé.");
+  } else if (act === "decrire") {
+    const saisi = await dialogue({ titre: `Description de « ${t.nom} »`, texte: "Aide Claude à classer les articles dans ce thème (300 caractères au maximum). Laisser vide pour l'effacer.", saisie: t.description || "", ok: "Enregistrer" });
+    if (typeof saisi !== "string") return;
+    const desc = saisi.replace(/\s+/g, " ").trim();
+    if (desc === (t.description || "")) return;
+    actionAdmin("admin_decrire_theme", { p_id: t.id, p_description: desc }, "Description enregistrée.");
   } else if (act === "actif") {
-    if (t.actif && !confirm(`Désactiver « ${t.nom} » pour tous les lecteurs ?\nIl ne sera plus utilisé par la collecte, mais reste réactivable.`)) return;
+    if (t.actif && !await confirmer(`Désactiver « ${t.nom} » ?`, "Pour tous les lecteurs : il ne sera plus utilisé par la collecte, mais reste réactivable.", "Désactiver", true)) return;
     actionAdmin("admin_modifier_theme", { p_id: t.id, p_actif: !t.actif }, t.actif ? "Thème désactivé." : "Thème réactivé.");
   } else if (act === "categorie") {
     actionAdmin("admin_modifier_theme", { p_id: t.id, p_categorie: !t.categorie }, "Thème modifié.");
   } else if (act === "principal") {
-    if (!confirm(`Faire de « ${t.nom} » un thème principal, proposé à tous les lecteurs ?`)) return;
+    if (!await confirmer(`Promouvoir « ${t.nom} » ?`, "Il devient un thème principal, proposé à tous les lecteurs.", "Promouvoir")) return;
     actionAdmin("admin_modifier_theme", { p_id: t.id, p_principal: true }, "Thème promu en principal.");
   } else if (act === "supprimer") {
-    if (!confirm(`Supprimer définitivement « ${t.nom} » ?\nIl disparaît des thèmes de tous les lecteurs qui le suivent.`)) return;
+    if (!await confirmer(`Supprimer « ${t.nom} » ?`, "Suppression définitive : il disparaît des thèmes de tous les lecteurs qui le suivent.", "Supprimer", true)) return;
     actionAdmin("admin_supprimer_theme", { p_id: t.id }, "Thème supprimé.");
   } else if (act === "fusionner") {
     const autres = etat.adminThemes.filter((x) => x.id !== t.id).sort((x, y) => x.nom.localeCompare(y.nom, "fr"));
@@ -1722,7 +1933,7 @@ $("admin-liste").addEventListener("click", (e) => {
   } else if (act === "fusion-ok") {
     const cible = etat.adminThemes.find((x) => x.id === Number(li.querySelector("select")?.value));
     if (!cible) return;
-    if (!confirm(`Fusionner « ${t.nom} » dans « ${cible.nom} » ?\nSes lecteurs et ses articles passent sur « ${cible.nom} », puis il est supprimé.`)) return;
+    if (!await confirmer("Fusionner ces thèmes ?", `« ${t.nom} » sera fusionné dans « ${cible.nom} » : ses lecteurs et ses articles passent sur « ${cible.nom} », puis il est supprimé.`, "Fusionner", true)) return;
     actionAdmin("admin_fusionner_themes", { p_source: t.id, p_cible: cible.id }, "Thèmes fusionnés.");
   }
 });
