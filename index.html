@@ -95,6 +95,9 @@
   }
   input:focus, textarea:focus { border-color: var(--accent); background: var(--surface); }
   #connexion .btn.principal { width: 100%; margin-top: 22px; }
+  #connexion .msg.ok { color: var(--ok); }
+  #connexion .bascule-mode { margin: 4px 0 0; text-align: center; }
+  #connexion .note { margin: 6px 0 0; font-size: .8rem; color: var(--doux); }
   .lien { color: var(--doux); text-decoration: underline; font-size: .85rem; padding: 10px 0; }
   .msg { min-height: 1.2em; font-size: .85rem; color: var(--non); margin-top: 8px; text-align: center; }
 
@@ -449,8 +452,12 @@
     <input id="email" type="email" autocomplete="username" required>
     <label for="mdp">Mot de passe</label>
     <input id="mdp" type="password" autocomplete="current-password" required minlength="10">
+    <label for="mdp2" class="cache" id="l-mdp2">Confirmer le mot de passe</label>
+    <input id="mdp2" type="password" autocomplete="new-password" minlength="10" class="cache">
+    <p class="note cache" id="note-inscription">10 caractères minimum. Un e-mail de confirmation vous sera envoyé.</p>
     <button class="btn principal" type="submit" id="btn-connexion">Se connecter</button>
     <div class="msg" id="msg-connexion" role="alert"></div>
+    <p class="bascule-mode"><button type="button" class="lien" id="btn-mode">Pas encore de compte ? Créer un compte</button></p>
   </form>
 </section>
 
@@ -563,6 +570,12 @@
   <h3 id="reglages-titre">Paramètres</h3>
   <div id="vue-admin" class="cache">
     <button class="lien" type="button" id="admin-retour">‹ Retour aux paramètres</button>
+    <h4>Comptes</h4>
+    <label class="coche"><input type="checkbox" id="admin-validation"> Valider chaque nouveau compte avant l'accès à l'application</label>
+    <p class="note" id="admin-validation-note"></p>
+    <div class="msg" id="comptes-msg" role="alert"></div>
+    <ul class="liste-admin" id="admin-comptes"></ul>
+    <h4>Thèmes</h4>
     <p class="note">Catalogue commun à tous les lecteurs. Les auteurs des thèmes ne sont jamais affichés. Chaque action est tracée.</p>
     <h4>Doublons probables</h4>
     <div id="admin-doublons"></div>
@@ -573,7 +586,7 @@
     <ul class="liste-admin" id="admin-liste"></ul>
   </div>
   <div id="vue-reglages">
-  <button class="lien cache" type="button" id="btn-admin">Administration des thèmes ›</button>
+  <button class="lien cache" type="button" id="btn-admin">Administration (comptes, thèmes) ›</button>
   <h4>Thèmes principaux</h4>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
@@ -821,13 +834,44 @@ function afficher(vue) {
 }
 
 /* ---------- Connexion ---------- */
+// Le même formulaire sert à la connexion et à la création de compte
+let modeInscription = false;
+function messageConnexion(texte, ok = false) { $("msg-connexion").textContent = texte; $("msg-connexion").classList.toggle("ok", ok); }
+function majModeConnexion() {
+  $("btn-connexion").textContent = modeInscription ? "Créer mon compte" : "Se connecter";
+  $("btn-mode").textContent = modeInscription ? "J'ai déjà un compte : me connecter" : "Pas encore de compte ? Créer un compte";
+  for (const id of ["l-mdp2", "mdp2", "note-inscription"]) $(id).classList.toggle("cache", !modeInscription);
+  $("mdp2").required = modeInscription; $("mdp2").value = "";
+  $("mdp").autocomplete = modeInscription ? "new-password" : "current-password";
+  messageConnexion("");
+}
+$("btn-mode").onclick = () => { modeInscription = !modeInscription; majModeConnexion(); };
 $("form-connexion").onsubmit = async (e) => {
   e.preventDefault();
-  $("msg-connexion").textContent = "";
+  messageConnexion("");
+  const email = $("email").value.trim(), password = $("mdp").value;
+  if (modeInscription && password !== $("mdp2").value) { messageConnexion("Les deux mots de passe ne sont pas identiques."); return; }
   $("btn-connexion").disabled = true;
-  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("mdp").value });
-  $("btn-connexion").disabled = false;
-  if (error) $("msg-connexion").textContent = /Invalid login/i.test(error.message) ? "E-mail ou mot de passe incorrect." : error.message;
+  try {
+    if (!modeInscription) {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) messageConnexion(/Invalid login/i.test(error.message) ? "E-mail ou mot de passe incorrect."
+        : /not confirmed/i.test(error.message) ? "Adresse e-mail pas encore confirmée : ouvrez le lien reçu par e-mail." : error.message);
+      return;
+    }
+    const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) {
+      messageConnexion(/not allowed|disabled/i.test(error.message) ? "Les inscriptions sont fermées pour le moment."
+        : /already registered|already exists/i.test(error.message) ? "Un compte existe déjà avec cette adresse : connectez-vous."
+        : /password/i.test(error.message) ? "Mot de passe refusé : 10 caractères minimum, évitez les mots de passe trop courants."
+        : /rate limit/i.test(error.message) ? "Trop de demandes : réessayez dans une heure." : error.message);
+      return;
+    }
+    if (data?.session) return; // compte confirmé d'office : la suite se fait à l'ouverture de session
+    modeInscription = false; majModeConnexion(); $("mdp").value = "";
+    messageConnexion("Compte créé. Ouvrez le lien de confirmation envoyé à " + email + ", puis connectez-vous ici.", true);
+  } catch (err) { messageConnexion("Connexion au serveur impossible. Vérifiez le réseau."); }
+  finally { $("btn-connexion").disabled = false; }
 };
 $("btn-deco").onclick = $("btn-deco-attente").onclick = $("b-deco").onclick = () => sb.auth.signOut();
 $("btn-reessayer").onclick = async () => {
@@ -865,10 +909,18 @@ async function demarrer(session) {
   if (sessionCourante !== uid) return;
   // Erreur réseau ≠ compte non autorisé : messages distincts, avec « Réessayer » dans le premier cas
   if (error || !data) {
-    $("attente-msg").textContent = error
-      ? "Connexion au serveur impossible. Vérifiez le réseau, puis réessayez."
-      : "Votre compte existe, mais il n'est pas encore autorisé à lire le journal.";
-    $("btn-reessayer").classList.toggle("cache", !error);
+    let msg = "Connexion au serveur impossible. Vérifiez le réseau, puis réessayez.", statut = null;
+    if (!error) {
+      const r = await sb.rpc("mon_inscription").then((x) => x, () => ({}));
+      if (sessionCourante !== uid) return;
+      statut = r.data ?? null;
+      msg = statut === "attente" ? "Votre inscription est enregistrée. L'administrateur doit la valider avant votre accès à Vigie : revenez un peu plus tard."
+        : statut === "refuse" ? "Votre demande d'accès à Vigie n'a pas été acceptée."
+        : "Votre compte existe, mais il n'est pas encore autorisé à accéder à Vigie.";
+    }
+    $("attente-msg").textContent = msg;
+    $("btn-reessayer").textContent = statut === "attente" ? "Vérifier à nouveau" : "Réessayer";
+    $("btn-reessayer").classList.toggle("cache", !error && statut !== "attente");
     afficher("attente"); return;
   }
   etat.admin = false;
@@ -2052,7 +2104,73 @@ function afficherVueAdmin(oui) {
   $("reglages-titre").textContent = oui ? "Administration des thèmes" : "Paramètres";
   $("reglages").scrollTop = 0;
 }
-$("btn-admin").onclick = () => { afficherVueAdmin(true); $("admin-filtre").value = ""; $("admin-msg").textContent = ""; chargerAdmin(); };
+$("btn-admin").onclick = () => { afficherVueAdmin(true); $("admin-filtre").value = ""; $("admin-msg").textContent = ""; chargerAdmin(); chargerComptes(); };
+
+/* ---------- Administration des comptes ---------- */
+let numeroComptes = 0, comptesOccupe = false;
+async function chargerComptes() {
+  const moi = ++numeroComptes, uid = sessionCourante;
+  $("comptes-msg").textContent = "";
+  $("admin-comptes").innerHTML = '<li class="note">Chargement…</li>';
+  let r;
+  try { r = await sb.rpc("admin_inscriptions"); } catch (e) { r = { error: { message: "connexion ?" } }; }
+  if (moi !== numeroComptes || uid !== sessionCourante) return;
+  if (r.error) { etat.comptes = null; $("admin-comptes").innerHTML = `<li class="note">Indisponible : ${echapper(r.error.message)}</li>`; return; }
+  etat.comptes = (r.data ?? []).filter((c) => c && typeof c.user_id === "string");
+  etat.validationComptes = etat.comptes[0]?.validation_comptes !== false;
+  rendreComptes();
+}
+function rendreComptes() {
+  if (!etat.comptes) return;
+  const v = etat.validationComptes, attente = etat.comptes.filter((c) => c.statut === "attente").length;
+  $("admin-validation").checked = v;
+  $("admin-validation-note").textContent = (v
+    ? "Activé : un nouveau compte attend votre validation avant de pouvoir lire."
+    : "Désactivé : tout compte qui confirme son adresse e-mail accède directement à l'application.")
+    + (attente ? ` ${attente} demande${attente > 1 ? "s" : ""} en attente.` : "");
+  const date = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const STATUT = { attente: ["En attente", " alerte"], valide: ["Accès autorisé", ""], refuse: ["Refusé", ""] };
+  $("admin-comptes").innerHTML = etat.comptes.length ? etat.comptes.map((c) => {
+    const [lib, cls] = c.admin ? ["Administrateur", ""] : STATUT[c.statut] || [c.statut, ""];
+    const id = echapper(c.user_id);
+    const actions = c.admin ? "" : c.statut === "attente"
+      ? `<button type="button" data-compte="${id}" data-valider="1">Valider</button><button type="button" data-compte="${id}" data-valider="0">Refuser</button>`
+      : c.statut === "valide" ? `<button type="button" data-compte="${id}" data-valider="0">Retirer l'accès</button>`
+      : `<button type="button" data-compte="${id}" data-valider="1">Autoriser</button>`;
+    return `<li><div class="tete">${echapper(c.email || "(sans e-mail)")} <span class="etiquette${cls}">${lib}</span></div>
+      <p class="note">Inscrit le ${date(c.cree_le)}${c.decide_le && !c.admin ? ` · décision le ${date(c.decide_le)}` : ""}</p>
+      ${actions ? `<span class="pastilles">${actions}</span>` : ""}</li>`;
+  }).join("") : '<li class="note">Aucun compte.</li>';
+}
+async function actionComptes(rpc, params, succes) {
+  if (comptesOccupe) return;
+  comptesOccupe = true;
+  const uid = sessionCourante;
+  for (const b of $("admin-comptes").querySelectorAll("button")) b.disabled = true;
+  $("admin-validation").disabled = true;
+  try {
+    const { error } = await sb.rpc(rpc, params);
+    if (uid !== sessionCourante) return;
+    if (error) $("comptes-msg").textContent = erreurRpc(error); else toast(succes);
+  } catch (e) { $("comptes-msg").textContent = "Action impossible (connexion ?)"; }
+  finally { comptesOccupe = false; $("admin-validation").disabled = false; if (uid === sessionCourante) await chargerComptes(); }
+}
+$("admin-validation").onchange = async (e) => {
+  const actif = e.target.checked;
+  if (!actif && !await confirmer("Désactiver la validation ?", "Toute personne qui crée un compte et confirme son e-mail pourra lire Vigie sans votre accord. Les demandes déjà en attente restent à traiter ici.", "Désactiver", true)) {
+    e.target.checked = true; return;
+  }
+  actionComptes("admin_regler_validation", { p_actif: actif }, actif ? "Validation des comptes activée." : "Validation des comptes désactivée.");
+};
+$("admin-comptes").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-compte]"); if (!b || b.disabled) return;
+  const c = etat.comptes?.find((x) => x.user_id === b.dataset.compte); if (!c) return;
+  const valider = b.dataset.valider === "1";
+  if (!valider && !await confirmer(c.statut === "valide" ? "Retirer l'accès ?" : "Refuser ce compte ?",
+    `${c.email || "Ce compte"} ne pourra plus lire Vigie. Vous pourrez l'autoriser plus tard.`, c.statut === "valide" ? "Retirer" : "Refuser", true)) return;
+  actionComptes("admin_decider_inscription", { p_user: c.user_id, p_valider: valider },
+    valider ? "Compte autorisé." : c.statut === "valide" ? "Accès retiré." : "Compte refusé.");
+});
 $("admin-retour").onclick = () => afficherVueAdmin(false);
 let numeroAdmin = 0;
 async function chargerAdmin() {
@@ -2128,7 +2246,7 @@ async function actionAdmin(rpc, params, succes) {
   } finally {
     adminOccupe = false;
     $("vue-admin").removeAttribute("aria-busy");
-    if (uid === sessionCourante) rendreAdmin(); // réactive les boutons
+    if (uid === sessionCourante) { rendreAdmin(); rendreComptes(); } // réactive les boutons
   }
 }
 $("admin-doublons").addEventListener("click", async (e) => {
