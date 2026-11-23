@@ -177,6 +177,9 @@
 
   /* Les filtres passent à la ligne (pas de défilement horizontal caché au doigt) */
   .filtres { display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 2px 2px 14px; }
+  /* Liste dépliable des thèmes, sous les filtres toujours visibles */
+  .filtres .plus { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 8px 0 2px; border-top: 1px solid var(--filet); }
+  .filtres button.depli { color: var(--accent); border-color: var(--accent); }
   .filtres button {
     flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; font-size: .85rem; font-weight: 500;
     background: var(--surface); border: 1px solid var(--filet); color: var(--doux);
@@ -602,6 +605,7 @@ const etat = {
   tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
   perso: [], // thèmes personnels suivis : {id, nom, categorie, partage, actif, mien}
   gardes: new Set(), articlesGardes: [], gardesSeuls: false, // articles gardés par le lecteur
+  themesOuverts: false, // liste dépliable des thèmes dans les filtres
   admin: false, adminThemes: [], rechargerApres: false // administration (l'affichage seulement : chaque action est vérifiée côté serveur)
 };
 let zoneDeps = new Set();
@@ -1104,11 +1108,19 @@ function rendreListe() {
   const nbZone = zoneDeps.size ? regrouper(etat.articles.filter(dansZone)).liste.length : 0;
   if (!zoneDeps.size) etat.zoneSeule = false;
   if (!etat.gardes.size) etat.gardesSeuls = false;
+  // Toujours visibles : Tous, Gardés, Ma zone, et le thème choisi ; les autres thèmes sont dans une liste dépliable
+  const bouton = ([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`;
+  const choisi = etat.theme ? themes.find(([t]) => t === etat.theme) : null;
+  const nbThemes = themes.length + vides.length;
   $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule && !etat.gardesSeuls}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
     (etat.gardes.size ? `<button data-gardes="1" aria-pressed="${etat.gardesSeuls}">🔖 Gardés · ${etat.gardes.size}</button>` : "") +
     (zoneDeps.size ? `<button data-zone="1" aria-pressed="${etat.zoneSeule}">📍 Ma zone · ${nbZone}</button>` : "") +
-    themes.map(([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`).join("") +
-    vides.map((t) => `<button disabled aria-disabled="true" title="Aucun article pour l'instant">${echapper(t.nom)} · 0</button>`).join("");
+    (choisi ? bouton(choisi) : "") +
+    (nbThemes ? `<button class="depli" data-plus="1" aria-expanded="${etat.themesOuverts}" aria-controls="filtres-plus">${etat.themesOuverts ? "Masquer les thèmes ▴" : `Autres thèmes · ${nbThemes} ▾`}</button>` : "") +
+    (etat.themesOuverts && nbThemes
+      ? `<div class="plus" id="filtres-plus" role="group" aria-label="Tous les thèmes">` + themes.map(bouton).join("") +
+        vides.map((t) => `<button disabled aria-disabled="true">${echapper(t.nom)} · 0</button>`).join("") + "</div>"
+      : "");
 
   // Vignettes
   const liste = listeFiltree();
@@ -1180,6 +1192,9 @@ $("propositions").addEventListener("click", async (e) => {
 
 $("filtres").addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.plus) { etat.themesOuverts = !etat.themesOuverts; rendreListe(); return; }
+  // Un choix referme la liste des thèmes (le thème choisi reste visible à côté de « Ma zone »)
+  etat.themesOuverts = false;
   if (b.dataset.gardes) {
     const uid = sessionCourante;
     etat.gardesSeuls = !etat.gardesSeuls; etat.theme = null; etat.zoneSeule = false;
