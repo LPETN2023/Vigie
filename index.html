@@ -440,6 +440,10 @@
   #tuto .actions { display: flex; gap: 8px; margin-top: 14px; }
   #tuto .actions .btn { flex: 1; }
   #tuto .tuto-retour { margin: 6px 0 0; min-height: 36px; }
+  #tuto .tuto-ic { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); color: var(--texte); vertical-align: middle; }
+  #tuto .tuto-ic svg { width: 18px; height: 18px; }
+  #tuto .tuto-ex { margin: 4px 0 10px; text-align: left; }
+  #tuto .tuto-ex .bas { margin-top: 6px; }
   #bienvenue .carte { width: 100%; max-width: 560px; background: var(--surface); padding: 28px 22px; border-radius: 20px; box-shadow: var(--ombre); }
   #bienvenue h3 { margin: 6px 0 2px; font-size: 1.15rem; }
   #bienvenue .etape { margin: 0; color: var(--doux); font-size: .82rem; }
@@ -2203,18 +2207,26 @@ function basculerPrincipal(id, suivi) {
 
 /* ---------- Première connexion : zone puis thèmes principaux ---------- */
 /* ---------- Présentation en 5 écrans (première connexion, ou depuis les Paramètres) ---------- */
+const icone = (nom) => `<span class="tuto-ic"><svg><use href="#i-${nom}"/></svg></span>`;
 const TUTO = [
   { icone: "🛡️", titre: "Bienvenue sur Vigie", texte: `<p>Chaque nuit, Vigie collecte l'actualité <b>cyber et judiciaire</b>. Claude sélectionne les articles utiles et les <b>résume en français</b>.</p>
     <p>Le matin, l'édition est prête, avec <b>« L'essentiel du jour »</b> en tête : les points marquants en quelques lignes.</p>` },
   { icone: "📰", titre: "Lire", texte: `<p>Touchez un article pour l'ouvrir.</p>
-    <p>Le bouton en haut de l'écran bascule entre la <b>liste</b> et le <b>mode journal</b>, qui fait défiler les articles comme des cartes.</p>
+    <p>Le bouton en haut de l'écran bascule entre la <b>liste</b> ${icone("grille")} et le <b>mode journal</b> ${icone("cartes")}, qui fait défiler les articles comme des cartes.</p>
     <p>Les articles d'un même sujet sont regroupés : « +2 autres articles ».</p>` },
   { icone: "👍", titre: "Donner son avis", texte: `<p>Sous chaque article, <b>👍 ou 👎</b>, avec une raison si vous voulez.</p>
     <p>Ces avis servent à garder les bonnes sources et à écarter les mauvaises : ils améliorent la sélection <b>pour tout le monde</b>.</p>` },
   { icone: "🖍️", titre: "Surligner un mot", texte: `<p>Dans un article, sélectionnez un mot ou une expression : une bulle apparaît.</p>
-    <ul><li><b>+ Thème</b> : le suivre ;</li><li><b>🔎 Articles</b> : trouver les autres articles qui en parlent ;</li><li><b>🌐 Web</b> : chercher une définition sur internet.</li></ul>` },
-  { icone: "🔖", titre: "Retrouver et garder", texte: `<ul><li>La <b>loupe</b> cherche dans les articles, avec plusieurs mots en « et » ou en « ou » ;</li>
-    <li><b>🔖</b> garde un article pour plus tard ;</li><li>les <b>Paramètres ⚙</b> règlent vos thèmes et votre zone.</li></ul>` }
+    <ul><li><b>+ Thème</b> : ajoute ce thème à votre veille ;</li><li><b>🔎 Articles</b> : trouve les autres articles qui en parlent ;</li><li><b>🌐 Web</b> : recherche le mot sur internet.</li></ul>` },
+  { icone: "🔎", titre: "Chercher et garder", texte: `<p>La <b>loupe</b> ${icone("loupe")} cherche dans les articles. Tapez un mot puis Entrée : il devient une étiquette. Ajoutez-en d'autres pour affiner :</p>
+    <div class="bandeau tuto-ex"><div class="ligne"><span class="titre">Filtres</span><span class="puce"><span>🔎 « rançongiciel »</span></span><span class="op">et</span><span class="puce"><span>🔎 « hôpital »</span></span></div>
+      <div class="bas"><span>3 articles sur 37</span></div></div>
+    <p>Touchez « et » pour passer en « ou » (l'un ou l'autre), ou tapez directement « rançongiciel ou ransomware ».</p>
+    <p><b>🔖</b> garde un article pour le retrouver plus tard dans le filtre « Gardés ».</p>` },
+  { icone: "⚙️", titre: "Vos réglages", texte: `<ul><li><b>Zone géographique</b> : les articles qui concernent vos départements sont signalés 📍 et remontés en tête ;</li>
+    <li><b>Thèmes principaux</b> : les grands sujets communs à tous ; décochez ceux que vous ne voulez pas voir ;</li>
+    <li><b>Thèmes personnels</b> : ajoutez vos propres sujets, la sélection de la nuit les privilégie. Ils sont proposés anonymement aux autres lecteurs, sauf si vous décochez cette option.</li></ul>
+    <p>Tout se modifie à tout moment dans les <b>Paramètres</b> ${icone("reglages")}.</p>` }
 ];
 let etapeTuto = 0, finTuto = null;
 // Affiche la présentation ; `apres` est appelée à la fin (Terminer ou Passer)
