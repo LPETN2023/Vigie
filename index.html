@@ -1156,7 +1156,7 @@ function rendrePropositions() {
   if (!p.length) { bloc.classList.add("cache"); return; }
   const enAttente = p.filter((x) => !x.decision).length;
   bloc.innerHTML = `<h2>🗂 ${enAttente ? `Retirer ${enAttente > 1 ? "ces sources" : "cette source"} ?` : "Vos décisions sur les sources"}</h2>
-    <p class="resume-revue">${enAttente ? "La révision hebdomadaire propose de ne plus suivre :" : "Elles seront prises en compte dès la prochaine collecte."}</p>
+    <p class="resume-revue">${enAttente ? "La révision des sources propose de ne plus suivre :" : "Elles seront prises en compte dès la prochaine collecte."}</p>
     <ul>${p.map((x) => `<li><div><strong>${echapper(x.source)}</strong> — ${echapper(x.raison)}</div>
       ${x.decision
         ? `<div class="etat">${x.decision === "accepte" ? "✓ Sera retirée" : "✓ Conservée"} · <button class="lien" data-prop="${echapper(x.id)}" data-decision="">Annuler</button></div>`
