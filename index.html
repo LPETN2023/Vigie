@@ -444,6 +444,11 @@
   #tuto .tuto-ic svg { width: 18px; height: 18px; }
   #tuto .tuto-ex { margin: 4px 0 10px; text-align: left; }
   #tuto .tuto-ex .bas { margin-top: 6px; }
+  /* Exemple de filtres : « Filtres » seul sur la 1re ligne, les étiquettes ensemble sur la 2de, en plus petit */
+  #tuto .tuto-ex .ligne { flex-wrap: wrap; }
+  #tuto .tuto-ex .titre { flex-basis: 100%; }
+  #tuto .tuto-ex .puce { font-size: .8rem; padding: 3px 10px; }
+  #tuto .tuto-ex .op { font-size: .75rem; padding: 1px 6px; }
   #bienvenue .carte { width: 100%; max-width: 560px; background: var(--surface); padding: 28px 22px; border-radius: 20px; box-shadow: var(--ombre); }
   #bienvenue h3 { margin: 6px 0 2px; font-size: 1.15rem; }
   #bienvenue .etape { margin: 0; color: var(--doux); font-size: .82rem; }
@@ -2219,7 +2224,7 @@ const TUTO = [
   { icone: "🖍️", titre: "Exploiter un passage", texte: `<p>Lors de la lecture, la sélection d'un mot ou d'une expression fait apparaître trois actions :</p>
     <ul><li><b>+ Thème</b> : ajouter ce thème à votre veille ;</li><li><b>🔎 Articles</b> : rechercher les autres articles qui l'évoquent ;</li><li><b>🌐 Web</b> : rechercher ce terme sur internet.</li></ul>` },
   { icone: "🔎", titre: "Rechercher et conserver", texte: `<p>La <b>loupe</b> ${icone("loupe")} ouvre la recherche. Chaque mot validé par la touche Entrée devient un filtre ; plusieurs filtres permettent d'affiner le résultat :</p>
-    <div class="bandeau tuto-ex"><div class="ligne"><span class="titre">Filtres</span><span class="puce"><span>🔎 « rançongiciel »</span></span><span class="op">et</span><span class="puce"><span>🔎 « hôpital »</span></span></div>
+    <div class="bandeau tuto-ex"><div class="ligne"><span class="titre">Filtres</span><span class="puce"><span>🔎 « fuite »</span></span><span class="op">et</span><span class="puce"><span>🔎 « hôpital »</span></span></div>
       <div class="bas"><span>3 articles sur 37</span></div></div>
     <p>Un appui sur « et » élargit la recherche en « ou ». Il est également possible de saisir directement « rançongiciel ou ransomware ».</p>
     <p>Le signet <b>🔖</b> conserve un article, que l'on retrouve ensuite dans le filtre « Gardés ».</p>` },
