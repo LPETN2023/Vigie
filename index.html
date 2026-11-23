@@ -430,7 +430,7 @@
   #tuto .carte { width: 100%; max-width: 460px; background: var(--surface); padding: 28px 22px 18px; border-radius: 20px; box-shadow: var(--ombre); text-align: center; }
   #tuto .tuto-icone { font-size: 2.6rem; line-height: 1; margin-bottom: 10px; }
   #tuto h3 { margin: 0 0 10px; font-size: 1.25rem; }
-  #tuto .tuto-texte { text-align: left; color: var(--texte); font-size: .97rem; line-height: 1.5; min-height: 150px; }
+  #tuto .tuto-texte { text-align: justify; hyphens: auto; -webkit-hyphens: auto; color: var(--texte); font-size: .97rem; line-height: 1.55; min-height: 150px; }
   #tuto .tuto-texte p { margin: 0 0 10px; }
   #tuto .tuto-texte ul { margin: 0 0 10px; padding-left: 20px; }
   #tuto .tuto-texte li { margin: 4px 0; }
@@ -2209,24 +2209,24 @@ function basculerPrincipal(id, suivi) {
 /* ---------- Présentation en 5 écrans (première connexion, ou depuis les Paramètres) ---------- */
 const icone = (nom) => `<span class="tuto-ic"><svg><use href="#i-${nom}"/></svg></span>`;
 const TUTO = [
-  { icone: "🛡️", titre: "Bienvenue sur Vigie", texte: `<p>Chaque nuit, Vigie collecte l'actualité <b>cyber et judiciaire</b>. Claude sélectionne les articles utiles et les <b>résume en français</b>.</p>
-    <p>Le matin, l'édition est prête, avec <b>« L'essentiel du jour »</b> en tête : les points marquants en quelques lignes.</p>` },
-  { icone: "📰", titre: "Lire", texte: `<p>Touchez un article pour l'ouvrir.</p>
-    <p>Le bouton en haut de l'écran bascule entre la <b>liste</b> ${icone("grille")} et le <b>mode journal</b> ${icone("cartes")}, qui fait défiler les articles comme des cartes.</p>
-    <p>Les articles d'un même sujet sont regroupés : « +2 autres articles ».</p>` },
-  { icone: "👍", titre: "Donner son avis", texte: `<p>Sous chaque article, <b>👍 ou 👎</b>, avec une raison si vous voulez.</p>
-    <p>Ces avis servent à garder les bonnes sources et à écarter les mauvaises : ils améliorent la sélection <b>pour tout le monde</b>.</p>` },
-  { icone: "🖍️", titre: "Surligner un mot", texte: `<p>Dans un article, sélectionnez un mot ou une expression : une bulle apparaît.</p>
-    <ul><li><b>+ Thème</b> : ajoute ce thème à votre veille ;</li><li><b>🔎 Articles</b> : trouve les autres articles qui en parlent ;</li><li><b>🌐 Web</b> : recherche le mot sur internet.</li></ul>` },
-  { icone: "🔎", titre: "Chercher et garder", texte: `<p>La <b>loupe</b> ${icone("loupe")} cherche dans les articles. Tapez un mot puis Entrée : il devient une étiquette. Ajoutez-en d'autres pour affiner :</p>
+  { icone: "🛡️", titre: "Bienvenue sur Vigie", texte: `<p>Vigie assure une veille quotidienne de l'actualité <b>cyber et judiciaire</b>. Chaque nuit, les sources suivies sont collectées, puis Claude retient les articles pertinents et en rédige un <b>résumé en français</b>.</p>
+    <p>L'édition est disponible dès le matin. Elle s'ouvre sur <b>« L'essentiel du jour »</b>, une synthèse des faits marquants en quelques lignes.</p>` },
+  { icone: "📰", titre: "Consulter les articles", texte: `<p>Un appui sur un article affiche son résumé et, lorsqu'il est disponible, son texte intégral.</p>
+    <p>Le bouton situé en haut de l'écran permet d'alterner entre la <b>vue en liste</b> ${icone("grille")} et le <b>mode journal</b> ${icone("cartes")}, qui présente les articles un par un, sous forme de cartes.</p>
+    <p>Les articles traitant d'un même sujet sont regroupés ; la mention « +2 autres articles » signale les sources complémentaires.</p>` },
+  { icone: "👍", titre: "Évaluer les articles", texte: `<p>Chaque article peut être évalué par <b>👍 ou 👎</b>, en précisant éventuellement le motif.</p>
+    <p>Ces évaluations orientent la révision régulière des sources : les plus pertinentes sont conservées, les moins utiles sont écartées. Elles améliorent ainsi la sélection <b>pour l'ensemble des lecteurs</b>.</p>` },
+  { icone: "🖍️", titre: "Exploiter un passage", texte: `<p>Lors de la lecture, la sélection d'un mot ou d'une expression fait apparaître trois actions :</p>
+    <ul><li><b>+ Thème</b> : ajouter ce thème à votre veille ;</li><li><b>🔎 Articles</b> : rechercher les autres articles qui l'évoquent ;</li><li><b>🌐 Web</b> : rechercher ce terme sur internet.</li></ul>` },
+  { icone: "🔎", titre: "Rechercher et conserver", texte: `<p>La <b>loupe</b> ${icone("loupe")} ouvre la recherche. Chaque mot validé par la touche Entrée devient un filtre ; plusieurs filtres permettent d'affiner le résultat :</p>
     <div class="bandeau tuto-ex"><div class="ligne"><span class="titre">Filtres</span><span class="puce"><span>🔎 « rançongiciel »</span></span><span class="op">et</span><span class="puce"><span>🔎 « hôpital »</span></span></div>
       <div class="bas"><span>3 articles sur 37</span></div></div>
-    <p>Touchez « et » pour passer en « ou » (l'un ou l'autre), ou tapez directement « rançongiciel ou ransomware ».</p>
-    <p><b>🔖</b> garde un article pour le retrouver plus tard dans le filtre « Gardés ».</p>` },
-  { icone: "⚙️", titre: "Vos réglages", texte: `<ul><li><b>Zone géographique</b> : les articles qui concernent vos départements sont signalés 📍 et remontés en tête ;</li>
-    <li><b>Thèmes principaux</b> : les grands sujets communs à tous ; décochez ceux que vous ne voulez pas voir ;</li>
-    <li><b>Thèmes personnels</b> : ajoutez vos propres sujets, la sélection de la nuit les privilégie. Ils sont proposés anonymement aux autres lecteurs, sauf si vous décochez cette option.</li></ul>
-    <p>Tout se modifie à tout moment dans les <b>Paramètres</b> ${icone("reglages")}.</p>` }
+    <p>Un appui sur « et » élargit la recherche en « ou ». Il est également possible de saisir directement « rançongiciel ou ransomware ».</p>
+    <p>Le signet <b>🔖</b> conserve un article, que l'on retrouve ensuite dans le filtre « Gardés ».</p>` },
+  { icone: "⚙️", titre: "Personnaliser votre veille", texte: `<ul><li><b>Zone géographique</b> : les articles concernant vos départements sont signalés 📍 et présentés en priorité.</li>
+    <li><b>Thèmes principaux</b> : sujets communs à tous les lecteurs ; il suffit de décocher ceux que vous ne souhaitez pas suivre.</li>
+    <li><b>Thèmes personnels</b> : sujets que vous ajoutez vous-même et que la sélection quotidienne privilégie. Ils sont proposés de manière anonyme aux autres lecteurs, sauf si vous désactivez cette option.</li></ul>
+    <p>Ces réglages restent modifiables à tout moment dans les <b>Paramètres</b> ${icone("reglages")}.</p>` }
 ];
 let etapeTuto = 0, finTuto = null;
 // Affiche la présentation ; `apres` est appelée à la fin (Terminer ou Passer)
@@ -2240,7 +2240,9 @@ function majTuto() {
   const e = TUTO[etapeTuto], dernier = etapeTuto === TUTO.length - 1;
   $("tuto-icone").textContent = e.icone;
   $("tuto-titre").textContent = e.titre;
-  $("tuto-texte").innerHTML = e.texte; // contenu fixe, écrit dans ce fichier
+  // Contenu fixe, écrit dans ce fichier. Espaces insécables à la française (guillemets, : ; ! ?) :
+  // la justification ne les étire pas et la ponctuation ne passe jamais seule à la ligne.
+  $("tuto-texte").innerHTML = e.texte.replace(/« /g, "« ").replace(/ »/g, " »").replace(/ ([;!?])/g, " $1").replace(/ :/g, " :");
   $("tuto-points").innerHTML = TUTO.map((_, i) => `<span class="${i === etapeTuto ? "actif" : ""}"></span>`).join("");
   $("tuto-suiv").textContent = dernier ? (finTuto ? "C'est parti" : "Terminer") : "Suivant";
   $("tuto-passer").classList.toggle("cache", dernier);
