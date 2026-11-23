@@ -486,7 +486,7 @@
     <h4>Doublons probables</h4>
     <div id="admin-doublons"></div>
     <h4>Tous les thèmes</h4>
-    <p class="note">« Dernier usage » : dernier article classé sous ce thème, ou dont le titre ou le résumé cite son nom. Les moins utilisés sont en tête.</p>
+    <p class="note">Usage calculé sur les 12 derniers mois. « Dernier usage » : dernier article classé sous ce thème, ou dont le titre ou le résumé cite son nom. Les moins utilisés sont en tête.</p>
     <input type="search" id="admin-filtre" placeholder="Filtrer les thèmes" aria-label="Filtrer les thèmes" autocomplete="off">
     <div class="msg" id="admin-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-liste"></ul>
@@ -1635,7 +1635,7 @@ function rendreAdmin() {
     const perso = t.type === "perso", n = Number(t.nb_lecteurs) || 0, m = Number(t.nb_masques) || 0, c = Number(t.nb_classes) || 0;
     const usage = [t.dernier_classement, t.derniere_mention].filter(Boolean).sort().pop() || null;
     const infos = [perso ? `${n} lecteur${n > 1 ? "s" : ""}` : (m ? `masqué par ${m}` : "affiché pour tous"),
-      `${c} article${c > 1 ? "s" : ""} classé${c > 1 ? "s" : ""}`, `dernier usage : ${dateCourte(usage)}`];
+      `${c} article${c > 1 ? "s" : ""} classé${c > 1 ? "s" : ""} en 12 mois`, `dernier usage : ${usage ? dateCourte(usage) : "aucun en 12 mois"}`];
     return `<li data-id="${t.id}"><div class="tete">${echapper(t.nom)}
         <span class="etiquette">${perso ? (t.categorie ? "perso · catégorie" : "perso") : "principal"}</span>
         ${t.actif ? "" : '<span class="etiquette alerte">désactivé</span>'}
