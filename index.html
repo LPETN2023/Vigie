@@ -1111,6 +1111,11 @@ function rendreListe() {
   // Toujours visibles : Tous, Gardés, Ma zone, et le thème choisi ; les autres thèmes sont dans une liste dépliable
   const bouton = ([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`;
   const choisi = etat.theme ? themes.find(([t]) => t === etat.theme) : null;
+  // Ordre de la liste dépliée : thèmes principaux (ordre du catalogue), puis catégories personnelles
+  // (les plus fournies d'abord), « Autre » en dernier
+  const rangPrincipal = new Map(etat.principaux.map((p, i) => [normaliser(p.nom), i]));
+  const rang = ([t]) => t === "Autre" ? 1e6 : rangPrincipal.get(normaliser(t)) ?? 1e3;
+  const themesListe = [...themes].sort((x, y) => rang(x) - rang(y) || y[1] - x[1] || x[0].localeCompare(y[0], "fr"));
   const nbThemes = themes.length + vides.length;
   $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule && !etat.gardesSeuls}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
     (etat.gardes.size ? `<button data-gardes="1" aria-pressed="${etat.gardesSeuls}">🔖 Gardés · ${etat.gardes.size}</button>` : "") +
@@ -1118,7 +1123,7 @@ function rendreListe() {
     (choisi ? bouton(choisi) : "") +
     (nbThemes ? `<button class="depli" data-plus="1" aria-expanded="${etat.themesOuverts}" aria-controls="filtres-plus">${etat.themesOuverts ? "Masquer les thèmes ▴" : `Autres thèmes · ${nbThemes} ▾`}</button>` : "") +
     (etat.themesOuverts && nbThemes
-      ? `<div class="plus" id="filtres-plus" role="group" aria-label="Tous les thèmes">` + themes.map(bouton).join("") +
+      ? `<div class="plus" id="filtres-plus" role="group" aria-label="Tous les thèmes">` + themesListe.map(bouton).join("") +
         vides.map((t) => `<button disabled aria-disabled="true">${echapper(t.nom)} · 0</button>`).join("") + "</div>"
       : "");
 
