@@ -314,6 +314,13 @@
   .liste-zone .deps .coche { color: var(--doux); }
   #reglages .actions { display: flex; gap: 8px; margin-top: 18px; }
   #reglages .actions .btn { flex: 1; }
+  .liste-principaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); column-gap: 12px; }
+  #bienvenue { min-height: 100%; display: grid; place-items: center; padding: 16px; }
+  #bienvenue .carte { width: 100%; max-width: 560px; background: var(--surface); padding: 28px 22px; border-radius: 20px; box-shadow: var(--ombre); }
+  #bienvenue h3 { margin: 6px 0 2px; font-size: 1.15rem; }
+  #bienvenue .etape { margin: 0; color: var(--doux); font-size: .82rem; }
+  #bienvenue .actions { display: flex; gap: 8px; margin-top: 18px; }
+  #bienvenue .actions .btn { flex: 1; }
 
   /* ---------- Bulle de sélection et message bref ---------- */
   #bulle {
@@ -360,6 +367,33 @@
   <div style="max-width:340px;text-align:center;padding:16px">
     <p>Votre compte existe, mais il n'est pas encore autorisé à lire le journal.</p>
     <button class="lien" id="btn-deco-attente">Se déconnecter</button>
+  </div>
+</section>
+
+<section id="bienvenue" class="cache">
+  <div class="carte">
+    <div class="logo"><img src="icon.svg" alt=""><span>Bienvenue</span></div>
+    <div id="b-zone">
+      <p class="etape">Étape 1 sur 2</p>
+      <h3>Votre zone géographique</h3>
+      <p class="note">Les articles qui concernent votre zone seront signalés et remontés dans l'ordre. Vous pourrez la modifier plus tard dans les Paramètres.</p>
+      <p class="note" id="b-resume-zone"></p>
+      <input type="search" id="b-filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
+      <div class="liste-zone" id="b-liste-zone"></div>
+    </div>
+    <div id="b-themes" class="cache">
+      <p class="etape">Étape 2 sur 2</p>
+      <h3>Les thèmes qui vous intéressent</h3>
+      <p class="note">Décochez les thèmes que vous ne voulez pas voir. Vous pourrez aussi ajouter vos propres thèmes dans les Paramètres.</p>
+      <div class="liste-principaux" id="b-liste-principaux"></div>
+    </div>
+    <div class="msg" id="b-msg" role="alert"></div>
+    <div class="actions">
+      <button class="btn cache" type="button" id="b-prec">Retour</button>
+      <button class="btn principal" type="button" id="b-suiv">Continuer</button>
+    </div>
+    <p style="text-align:center;margin:8px 0 0"><button class="lien cache" type="button" id="b-entrer">Entrer quand même</button>
+      <button class="lien" type="button" id="b-deco">Se déconnecter</button></p>
   </div>
 </section>
 
@@ -430,6 +464,9 @@
 <div id="reglages" class="cache" role="dialog" aria-modal="true" aria-labelledby="reglages-titre">
   <div class="poignee"></div>
   <h3 id="reglages-titre">Paramètres</h3>
+  <h4>Thèmes principaux</h4>
+  <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
+  <div class="liste-principaux" id="liste-principaux"></div>
   <h4>Thèmes de recherche</h4>
   <ul class="liste-reglages" id="liste-themes"></ul>
   <form class="ligne" id="form-theme" autocomplete="off">
@@ -496,7 +533,9 @@ const etat = {
   articles: [], votes: new Map(), synthese: null, jours: 1, theme: null,
   vue: "accueil", liste: [], index: 0, ouvert: null, feuille: null,
   prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false },
-  prefsChargees: false, recherche: "", zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null
+  prefsChargees: false, recherche: "", zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null,
+  // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
+  tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0
 };
 let zoneDeps = new Set();
 
@@ -610,7 +649,7 @@ document.addEventListener("error", (e) => { if (e.target.tagName === "IMG" && e.
 const svgVote = (s) => `<svg><use href="#i-${s}"/></svg>`;
 
 function afficher(vue) {
-  for (const id of ["demarrage", "connexion", "attente", "app"]) $(id).classList.toggle("cache", id !== vue);
+  for (const id of ["demarrage", "connexion", "attente", "bienvenue", "app"]) $(id).classList.toggle("cache", id !== vue);
 }
 
 /* ---------- Connexion ---------- */
@@ -622,7 +661,7 @@ $("form-connexion").onsubmit = async (e) => {
   $("btn-connexion").disabled = false;
   if (error) $("msg-connexion").textContent = /Invalid login/i.test(error.message) ? "E-mail ou mot de passe incorrect." : error.message;
 };
-$("btn-deco").onclick = $("btn-deco-attente").onclick = () => sb.auth.signOut();
+$("btn-deco").onclick = $("btn-deco-attente").onclick = $("b-deco").onclick = () => sb.auth.signOut();
 
 let sessionCourante = null;
 sb.auth.onAuthStateChange((evt, session) => setTimeout(() => demarrer(session), 0));
@@ -631,6 +670,7 @@ async function demarrer(session) {
   if (uid === sessionCourante && uid !== null) return;
   const ancien = sessionCourante;
   sessionCourante = uid;
+  numeroRequete++; // invalide tout chargement encore en vol pour l'ancienne session
   if (!session) {
     if (etat.ouvert) fermerLecteur();
     if (etat.feuille) fermerFeuille();
@@ -638,6 +678,7 @@ async function demarrer(session) {
     $("bulle").classList.add("cache");
     if (ancien) oublier(cleAttente(ancien));
     lus.clear(); etat.prefsChargees = false; appliquerPrefs(null); etat.recherche = ""; $("recherche").value = ""; etat.zoneSeule = false;
+    etat.principaux = []; etat.principauxMasques = new Set(); etat.principauxCharges = false; etat.etapeBienvenue = 0;
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
   }
@@ -646,6 +687,11 @@ async function demarrer(session) {
   afficher("demarrage");
   const { data, error } = await sb.rpc("est_lecteur");
   if (error || !data) { afficher("attente"); return; }
+  // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
+  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,parcours_fini")
+    .eq("user_id", uid).maybeSingle();
+  if (sessionCourante !== uid) return;
+  if (!pf.error && !pf.data?.parcours_fini) { await ouvrirBienvenue(uid, pf.data); return; }
   afficher("app");
   await charger();
 }
@@ -666,7 +712,9 @@ async function charger() {
     requete = requete.gte("edition", d.toISOString().slice(0, 10));
   }
   const versionLancee = versionPrefs;
-  const [arts, exe, syn, rev, props, exeOk, pr] = await Promise.all([
+  const versionSuivisLancee = versionSuivis;
+  const [princ, arts, exe, syn, rev, props, exeOk, pr] = await Promise.all([
+    chargerPrincipaux(sessionCourante),
     requete.order("edition", { ascending: false }).order("a_la_une", { ascending: false })
       .order("score", { ascending: false }).limit(LIMITE),
     sb.from("executions").select("debut,fin,statut").order("debut", { ascending: false }).limit(1),
@@ -688,7 +736,9 @@ async function charger() {
   }
   const serveurLus = await chargerLectures(ids);
   if (moi !== numeroRequete) return;
-  etat.articles = arts.data;
+  if (versionSuivisLancee === versionSuivis) appliquerPrincipaux(princ);
+  etat.tous = arts.data;
+  etat.articles = sansMasques(etat.tous);
   cacheTexte.clear();
   etat.synthese = syn.data;
   etat.revue = rev.data ?? null;
@@ -763,10 +813,12 @@ let fileSauvegarde = Promise.resolve(), versionPrefs = 0;
 function sauverPrefs(...champs) {
   etat.prefsModif = true;
   versionPrefs++;
+  // Session et valeurs figées au moment du changement : une écriture en file ne doit pas partir sur un autre compte
+  const uid = sessionCourante;
+  const ligne = { user_id: uid, maj_le: new Date().toISOString() };
+  for (const c of champs) ligne[c] = structuredClone(etat.prefs[c]);
   fileSauvegarde = fileSauvegarde.then(async () => {
-    if (!sessionCourante) return;
-    const ligne = { user_id: sessionCourante, maj_le: new Date().toISOString() };
-    for (const c of champs) ligne[c] = etat.prefs[c];
+    if (!uid || uid !== sessionCourante) return;
     try {
       const { error } = await sb.from("preferences").upsert(ligne, { onConflict: "user_id" });
       if (error) toast("Préférences non enregistrées : " + error.message);
@@ -1216,8 +1268,9 @@ $("liste-themes").addEventListener("change", (e) => {
   const t = etat.prefs.themes[+c.dataset.cat];
   if (t) { t.categorie = c.checked; sauverPrefs("themes"); }
 });
-function rendreZone() {
-  const q = normaliser($("filtre-zone").value);
+// p = préfixe des identifiants : "" (Paramètres) ou "b-" (première connexion)
+function rendreZone(p = "") {
+  const q = normaliser($(p + "filtre-zone").value);
   const selR = new Set(etat.prefs.zones.filter((z) => z.type === "region").map((z) => z.code));
   const selD = new Set(etat.prefs.zones.filter((z) => z.type === "departement").map((z) => z.code));
   let html = "";
@@ -1230,27 +1283,131 @@ function rendreZone() {
       deps.map((d) => `<label class="coche"><input type="checkbox" data-zone="departement:${d.code}"${tout || selD.has(d.code) ? " checked" : ""}${tout ? " disabled" : ""}> ${echapper(d.code)} ${echapper(d.nom)}</label>`).join("") +
       "</div></div>";
   }
-  const zone = $("liste-zone"), haut = zone.scrollTop;
+  const zone = $(p + "liste-zone"), haut = zone.scrollTop;
   zone.innerHTML = html || '<p class="note">Aucun résultat.</p>';
   zone.scrollTop = haut;
   const z = etat.prefs.zones;
-  $("resume-zone").textContent = z.length ? z.length + " sélection" + (z.length > 1 ? "s" : "") + " : " + z.map((x) => x.nom).join(", ")
+  $(p + "resume-zone").textContent = z.length ? z.length + " sélection" + (z.length > 1 ? "s" : "") + " : " + z.map((x) => x.nom).join(", ")
     : "Aucune zone choisie. Les articles de votre zone seront signalés et remontés dans l'ordre.";
 }
-$("filtre-zone").addEventListener("input", rendreZone);
-$("liste-zone").addEventListener("change", (e) => {
-  const c = e.target.closest("[data-zone]"); if (!c) return;
-  const [type, code] = c.dataset.zone.split(":");
-  const z = etat.prefs.zones, i = z.findIndex((x) => x.type === type && x.code === code);
-  if (c.checked && i < 0) z.push({ type, code, nom: type === "region" ? REGIONS.find((r) => r.code === code)?.nom ?? code : NOM_DEP.get(code) ?? code });
-  else if (!c.checked && i >= 0) z.splice(i, 1);
-  recalcZone(); sauverPrefs("zones"); rendreZone();
-});
+for (const p of ["", "b-"]) {
+  $(p + "filtre-zone").addEventListener("input", () => rendreZone(p));
+  $(p + "liste-zone").addEventListener("change", (e) => {
+    const c = e.target.closest("[data-zone]"); if (!c) return;
+    const [type, code] = c.dataset.zone.split(":");
+    const z = etat.prefs.zones, i = z.findIndex((x) => x.type === type && x.code === code);
+    if (c.checked && i < 0) z.push({ type, code, nom: type === "region" ? REGIONS.find((r) => r.code === code)?.nom ?? code : NOM_DEP.get(code) ?? code });
+    else if (!c.checked && i >= 0) z.splice(i, 1);
+    recalcZone(); sauverPrefs("zones"); rendreZone(p);
+  });
+  $(p + "liste-principaux").addEventListener("change", (e) => {
+    const c = e.target.closest("[data-principal]"); if (!c) return;
+    basculerPrincipal(Number(c.dataset.principal), c.checked);
+  });
+}
+
+/* ---------- Thèmes principaux (catalogue commun, choix par compte) ---------- */
+// Résout toujours (jamais d'exception) ; n'écrit pas dans `etat` : l'appelant applique le résultat
+// s'il est encore d'actualité (même session, aucun choix modifié entre-temps). En cas d'erreur, rien n'est masqué.
+let versionSuivis = 0;
+async function chargerPrincipaux(uid) {
+  const vide = { ok: false, principaux: [], masques: new Set() };
+  if (!uid) return vide;
+  try {
+    const [th, su] = await Promise.all([
+      sb.from("themes").select("id,nom").eq("type", "principal").eq("actif", true).order("ordre").order("nom"),
+      sb.from("suivis").select("theme_id,suivi").eq("user_id", uid)
+    ]);
+    if (th.error || su.error) return vide;
+    const principaux = (th.data ?? []).filter((t) => t && typeof t.nom === "string" && normaliser(t.nom) !== "autre")
+      .map((t) => ({ id: Number(t.id), nom: t.nom }));
+    const masques = new Set((su.data ?? []).filter((s) => s && s.suivi === false).map((s) => Number(s.theme_id)));
+    return { ok: true, principaux, masques };
+  } catch (e) { return vide; }
+}
+function appliquerPrincipaux(r) {
+  etat.principaux = r.principaux; etat.principauxMasques = r.masques; etat.principauxCharges = r.ok;
+}
+function sansMasques(tab) {
+  const noms = new Set(etat.principaux.filter((t) => etat.principauxMasques.has(t.id)).map((t) => normaliser(t.nom)));
+  return noms.size ? tab.filter((a) => !noms.has(normaliser(a.theme || ""))) : tab;
+}
+function rendrePrincipaux(p = "") {
+  $(p + "liste-principaux").innerHTML = etat.principauxCharges && etat.principaux.length
+    ? etat.principaux.map((t) => `<label class="coche"><input type="checkbox" data-principal="${Number(t.id)}"${etat.principauxMasques.has(t.id) ? "" : " checked"}> ${echapper(t.nom)}</label>`).join("")
+    : '<p class="note">Thèmes indisponibles pour le moment. Vous pourrez les choisir plus tard dans les Paramètres.</p>';
+}
+let fileSuivis = Promise.resolve();
+function basculerPrincipal(id, suivi) {
+  if (!etat.principaux.some((t) => t.id === id)) return;
+  if (suivi) etat.principauxMasques.delete(id); else etat.principauxMasques.add(id);
+  etat.prefsModif = true;
+  versionSuivis++;
+  const uid = sessionCourante;
+  fileSuivis = fileSuivis.then(async () => {
+    if (!uid || uid !== sessionCourante) return;
+    try {
+      const { error } = suivi
+        ? await sb.from("suivis").delete().eq("user_id", uid).eq("theme_id", id)
+        : await sb.from("suivis").upsert({ user_id: uid, theme_id: id, suivi: false }, { onConflict: "user_id,theme_id" });
+      if (error) toast("Choix non enregistré : " + error.message);
+    } catch (e) { toast("Choix non enregistré (connexion ?)"); }
+  });
+}
+
+/* ---------- Première connexion : zone puis thèmes principaux ---------- */
+async function ouvrirBienvenue(uid, prefs) {
+  const r = await chargerPrincipaux(uid);
+  if (sessionCourante !== uid) return;
+  appliquerPrefs(prefs);
+  etat.prefsChargees = true;
+  appliquerPrincipaux(r);
+  etat.etapeBienvenue = 1;
+  $("b-filtre-zone").value = ""; $("b-msg").textContent = ""; $("b-entrer").classList.add("cache");
+  rendreZone("b-"); rendrePrincipaux("b-");
+  majBienvenue();
+  afficher("bienvenue");
+}
+function majBienvenue() {
+  const e = etat.etapeBienvenue;
+  $("b-zone").classList.toggle("cache", e !== 1);
+  $("b-themes").classList.toggle("cache", e !== 2);
+  $("b-prec").classList.toggle("cache", e !== 2);
+  $("b-suiv").textContent = e === 2 ? "Terminer" : "Continuer";
+  scrollTo(0, 0);
+}
+$("b-prec").onclick = () => { etat.etapeBienvenue = 1; majBienvenue(); };
+$("b-suiv").onclick = async () => {
+  if (etat.etapeBienvenue === 1) { etat.etapeBienvenue = 2; majBienvenue(); return; }
+  const uid = sessionCourante, zones = structuredClone(etat.prefs.zones);
+  if (!uid) return;
+  $("b-suiv").disabled = true; $("b-msg").textContent = "";
+  let echec = "";
+  try {
+    await fileSuivis;
+    await fileSauvegarde;
+    if (sessionCourante !== uid) return;
+    const { error } = await sb.from("preferences").upsert(
+      { user_id: uid, zones, parcours_fini: true, maj_le: new Date().toISOString() }, { onConflict: "user_id" });
+    if (error) echec = "Enregistrement impossible : " + error.message;
+  } catch (e) { echec = "Enregistrement impossible (connexion ?)"; }
+  finally { $("b-suiv").disabled = false; }
+  if (sessionCourante !== uid) return;
+  // Échec : on peut réessayer, ou entrer quand même (le parcours sera reproposé à la prochaine connexion)
+  if (echec) { $("b-msg").textContent = echec; $("b-entrer").classList.remove("cache"); return; }
+  entrerDepuisBienvenue();
+};
+function entrerDepuisBienvenue() {
+  etat.etapeBienvenue = 0; etat.prefsModif = false;
+  afficher("app");
+  charger();
+}
+$("b-entrer").onclick = entrerDepuisBienvenue;
 function ouvrirReglages() {
   if (etat.reglages || !etat.prefsChargees) return;
   etat.reglages = true; etat.prefsModif = false;
   $("msg-theme").textContent = ""; $("filtre-zone").value = "";
-  rendreThemes(); rendreZone();
+  rendrePrincipaux(""); rendreThemes(); rendreZone("");
   history.pushState({ vue: "reglages" }, "");
   $("voile").classList.remove("cache"); $("reglages").classList.remove("cache");
 }
@@ -1259,7 +1416,10 @@ function masquerReglages() {
   if (!etat.reglages) return;
   etat.reglages = false;
   $("voile").classList.add("cache"); $("reglages").classList.add("cache");
-  if (etat.prefsModif && sessionCourante) { etat.prefsModif = false; majListes(true); }
+  if (etat.prefsModif && sessionCourante) {
+    etat.prefsModif = false; etat.articles = sansMasques(etat.tous);
+    if (etat.vue === "accueil") rendreAccueil(); else majListes(true);
+  }
 }
 $("btn-reglages").onclick = ouvrirReglages;
 $("btn-reglages-fermer").onclick = fermerReglages;
