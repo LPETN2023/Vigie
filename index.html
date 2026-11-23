@@ -359,9 +359,16 @@
   /* ---------- Bulle de sélection et message bref ---------- */
   #bulle {
     position: fixed; z-index: 35; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 90px);
-    padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem; background: var(--texte); color: var(--fond);
-    box-shadow: 0 6px 24px rgba(0,0,0,.25);
+    display: flex; padding: 4px; border-radius: 999px; background: var(--texte);
+    box-shadow: 0 6px 24px rgba(0,0,0,.25); white-space: nowrap;
   }
+  #bulle.cache { display: none; }
+  #bulle button {
+    padding: 8px 12px; border: 0; border-radius: 999px; background: none; color: var(--fond);
+    font: inherit; font-weight: 600; font-size: .88rem; cursor: pointer;
+  }
+  #bulle button + button { box-shadow: inset 1px 0 color-mix(in srgb, var(--fond) 25%, transparent); }
+  #bulle button:hover, #bulle button:focus-visible { background: color-mix(in srgb, var(--fond) 15%, transparent); }
   #bulle.flottante { transform: none; bottom: auto; }
   #toast {
     position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 24px);
@@ -540,7 +547,11 @@
     <button class="btn principal" id="btn-reglages-fermer">Fermer</button>
   </div>
 </div>
-<button id="bulle" class="cache" type="button">+ Ajouter aux thèmes</button>
+<div id="bulle" class="cache" role="toolbar" aria-label="Actions sur la sélection">
+  <button type="button" data-action="theme" title="Ajouter aux thèmes">+ Thème</button>
+  <button type="button" data-action="articles" title="Chercher dans les autres articles">🔎 Articles</button>
+  <button type="button" data-action="web" title="Chercher sur internet">🌐 Web</button>
+</div>
 <div id="toast" class="cache" role="status" aria-live="polite"></div>
 <div id="dialogue" class="cache" role="alertdialog" aria-modal="true" aria-labelledby="dialogue-titre" aria-describedby="dialogue-texte">
   <form class="boite" id="dialogue-form" autocomplete="off">
@@ -1991,13 +2002,25 @@ function majBulle() {
 document.addEventListener("selectionchange", () => { clearTimeout(minuteurSel); minuteurSel = setTimeout(majBulle, 200); });
 $("bulle").addEventListener("pointerdown", () => { dernierAppuiBulle = Date.now(); });
 $("bulle").addEventListener("mousedown", (e) => e.preventDefault());
-$("bulle").onclick = () => {
-  const t = etat.selection; if (!t) return;
-  ajouterTheme(t).then((r) => toast(r.msg));
+$("bulle").onclick = (e) => {
+  const action = e.target.closest("button")?.dataset.action;
+  const t = etat.selection; if (!action || !t) return;
   dernierAppuiBulle = 0; etat.selection = null;
   $("bulle").classList.add("cache");
   getSelection()?.removeAllRanges();
+  if (action === "theme") ajouterTheme(t).then((r) => toast(r.msg));
+  else if (action === "web") window.open("https://www.google.com/search?q=" + encodeURIComponent(t), "_blank", "noopener");
+  else if (action === "articles") chercherDansArticles(t);
 };
+// Ferme l'article et filtre la liste chargée (période en cours) sur le passage surligné
+function chercherDansArticles(t) {
+  $("recherche").value = t; etat.recherche = t;
+  $("zone-recherche").classList.remove("cache");
+  $("b-loupe").setAttribute("aria-expanded", "true");
+  // Le gestionnaire popstate principal ferme d'abord le lecteur, puis on rafraîchit la liste
+  window.addEventListener("popstate", () => majListes(true), { once: true });
+  history.back();
+}
 </script>
 </body>
 </html>
