@@ -763,6 +763,15 @@
     <div class="msg" id="demandes-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-demandes"></ul>
     </details>
+    <details class="section" id="sec-controle"><summary><span class="ic" aria-hidden="true">🚩</span><span class="txt"><span class="titre-sec">Contrôle des thèmes <span id="nb-controle"></span></span><small>Thèmes signalés, partages à valider</small></span></summary>
+    <h4>Thèmes signalés par le contrôle de nuit</h4>
+    <p class="note">Chaque nuit, les nouveaux thèmes personnels sont examinés. Un thème recherchant un contenu illicite est désactivé automatiquement ; un thème visant une personne est seulement signalé. À vous de décider.</p>
+    <div class="msg" id="controle-msg" role="alert"></div>
+    <ul class="liste-admin" id="admin-signalements"></ul>
+    <h4>Thèmes partagés à valider</h4>
+    <p class="note">Un thème partagé n'est proposé aux autres lecteurs qu'après votre accord (son auteur n'est pas affiché).</p>
+    <ul class="liste-admin" id="admin-partages"></ul>
+    </details>
     <details class="section" id="sec-suggestions"><summary><span class="ic" aria-hidden="true">📥</span><span class="txt"><span class="titre-sec">Sources : propositions et ajout <span id="nb-suggestions"></span></span><small>Propositions des lecteurs, ajouter une source</small></span></summary>
     <p class="note">Une source acceptée ou ajoutée est collectée dès la nuit suivante (ou dès une édition lancée à la main), puis inscrite au registre lors de la révision suivante. Indiquez l'adresse du <b>flux RSS</b> (souvent /feed, /rss ou /rss.xml) : une page web ordinaire ne peut pas être lue.</p>
     <h4>Propositions des lecteurs</h4>
@@ -787,7 +796,7 @@
     <div class="msg" id="lancer-msg" role="status"></div>
     </details>
     <details class="section" id="sec-notifs"><summary><span class="ic" aria-hidden="true">🔔</span><span class="txt"><span class="titre-sec">Notifications</span><small>Alertes sur cet appareil</small></span></summary>
-    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou propose une source, ou que la révision propose d'ajouter ou de retirer une source.</p>
+    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou propose une source, qu'un thème est signalé ou partagé, ou que la révision propose d'ajouter ou de retirer une source.</p>
     <p class="note" id="notifs-etat"></p>
     <div class="pastilles">
       <button type="button" id="btn-notifs">Activer sur cet appareil</button>
@@ -808,7 +817,7 @@
   </div>
   <div id="vue-reglages">
   <div class="alertes-admin cache" id="alertes-admin" role="status"></div>
-  <button class="ligne-menu cache" type="button" id="btn-admin"><span class="ic" aria-hidden="true">🛡️</span><span class="txt"><span class="titre-sec">Administration</span><small>Comptes, demandes, sources, thèmes, actualisation</small></span></button>
+  <button class="ligne-menu cache" type="button" id="btn-admin"><span class="ic" aria-hidden="true">🛡️</span><span class="txt"><span class="titre-sec">Administration</span><small>Comptes, contrôle, sources, thèmes, actualisation</small></span></button>
   <details class="section"><summary><span class="ic" aria-hidden="true">🗂️</span><span class="txt"><span class="titre-sec">Thèmes principaux</span><small>Choisir les thèmes affichés</small></span></summary>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte, sauf ceux qui concernent vos thèmes personnels. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
@@ -818,6 +827,7 @@
   <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Ces ajouts seront pris en compte à partir de la prochaine édition, qui reprendra aussi les articles des 7 derniers jours.</p>
   <div class="quota" id="quota-themes"></div>
   <ul class="liste-reglages" id="liste-themes"></ul>
+  <p class="note regle">Pas de recherche illicite ou visant la surveillance d'une personne.</p>
   <form class="ligne" id="form-theme" autocomplete="off">
     <input id="nouveau-theme" maxlength="60" placeholder="Ajouter un thème" aria-label="Nouveau thème">
     <button class="btn principal" type="submit">Ajouter</button>
@@ -2557,7 +2567,8 @@ function rendreThemes() {
     ? etat.perso.map((t) => `<li><span class="nom">${echapper(t.nom)}${t.actif ? "" : ' <span class="note">(désactivé)</span>'}</span>
         <button class="icone" data-quitter="${t.id}" aria-label="Ne plus suivre le thème ${echapper(t.nom)}">✕</button>
         <div class="options">${t.mien
-          ? `<label class="coche"><input type="checkbox" data-partage="${t.id}"${t.partage ? " checked" : ""}> proposer aux autres lecteurs (sans votre nom)</label>`
+          ? `<label class="coche"><input type="checkbox" data-partage="${t.id}"${t.partage ? " checked" : ""}> proposer aux autres lecteurs (sans votre nom)</label>${t.partage
+            ? `<span class="note">${t.partageValide === true ? "Proposé aux autres lecteurs." : t.partageValide === false ? "Non retenu pour être proposé aux autres." : "Sera proposé aux autres après accord de l'administrateur."}</span>` : ""}`
           : '<span class="note">Thème proposé par un autre lecteur</span>'}</div></li>`).join("")
     : '<li class="note">Aucun thème personnel.</li>';
 }
@@ -2746,7 +2757,7 @@ async function chargerPrincipaux(uid) {
   try {
     const [th, su] = await Promise.all([
       sb.from("themes").select("id,nom").eq("type", "principal").eq("actif", true).order("ordre").order("nom"),
-      sb.from("suivis").select("theme_id,suivi,cree_le,themes(id,nom,type,categorie,partage,actif,cree_par)").eq("user_id", uid).order("cree_le")
+      sb.from("suivis").select("theme_id,suivi,cree_le,themes(id,nom,type,categorie,partage,partage_valide,actif,cree_par)").eq("user_id", uid).order("cree_le")
     ]);
     if (th.error || su.error) return vide;
     const principaux = (th.data ?? []).filter((t) => t && typeof t.nom === "string" && normaliser(t.nom) !== "autre")
@@ -2755,7 +2766,7 @@ async function chargerPrincipaux(uid) {
     const masques = new Set(lignes.filter((s) => s.suivi === false).map((s) => Number(s.theme_id)));
     // Thèmes personnels suivis ; « mien » : seul l'auteur règle catégorie et partage
     const perso = lignes.filter((s) => s.suivi !== false && s.themes?.type === "perso" && typeof s.themes.nom === "string")
-      .map((s) => ({ id: Number(s.themes.id), nom: s.themes.nom, categorie: !!s.themes.categorie, partage: !!s.themes.partage,
+      .map((s) => ({ id: Number(s.themes.id), nom: s.themes.nom, categorie: !!s.themes.categorie, partage: !!s.themes.partage, partageValide: s.themes.partage_valide ?? null,
         actif: s.themes.actif !== false, mien: s.themes.cree_par === uid }));
     return { ok: true, principaux, masques, perso };
   } catch (e) { return vide; }
@@ -2872,7 +2883,7 @@ const TUTO = [
   { icone: "⚙️", titre: "Personnaliser votre veille", texte: `<ul><li><b>Zone géographique</b> : les articles concernant vos départements sont signalés 📍 et présentés en priorité.</li>
     <li><b>Thèmes principaux</b> : sujets communs à tous les lecteurs ; il suffit de décocher ceux que vous ne souhaitez pas suivre.</li>
     <li><b>Thèmes personnels</b> : sujets que vous ajoutez vous-même. Chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul. Leur nombre est limité (5 par défaut) ; au-delà, une demande motivée peut être adressée à l'administrateur, qui consulte alors vos thèmes pour décider.</li></ul>
-    <p>Lors de la saisie d'un thème, Vigie propose les thèmes proches qui existent déjà, pour éviter les doublons. Vos thèmes sont proposés aux autres lecteurs sans votre nom, sauf si vous décochez cette option.</p>
+    <p>Lors de la saisie d'un thème, Vigie propose les thèmes proches qui existent déjà, pour éviter les doublons. Vos thèmes sont proposés aux autres lecteurs sans votre nom, après accord de l'administrateur, sauf si vous décochez cette option. Pas de recherche illicite ou visant la surveillance d'une personne.</p>
     <p>Ces réglages restent modifiables à tout moment dans les <b>Paramètres</b> ${icone("reglages")}.</p>` }
 ];
 /* ---------- Installation comme application ---------- */
@@ -3032,7 +3043,7 @@ function afficherVueAdmin(oui) {
 $("btn-admin").onclick = () => {
   afficherVueAdmin(true); fermerSections("#vue-admin");
   $("admin-filtre").value = ""; $("comptes-filtre").value = ""; $("admin-msg").textContent = "";
-  chargerAdmin(); chargerComptes(); chargerDemandes(); chargerSuggestionsAdmin(); majEtatNotifs();
+  chargerAdmin(); chargerComptes(); chargerDemandes(); chargerSuggestionsAdmin(); chargerControle(); majEtatNotifs();
   $("lancer-msg").textContent = ""; $("ajout-msg").textContent = ""; $("suggestions-msg").textContent = "";
 };
 // Sections : une section ouverte s'affiche seule, comme une nouvelle page (l'événement toggle ne remonte pas : capture).
@@ -3080,12 +3091,12 @@ async function majAlertesAdmin() {
     if (moi !== numeroAlertes || uid !== sessionCourante || error) return;
     const l = Array.isArray(data) ? data[0] : data;
     etat.alertes = { comptes: Number(l?.comptes) || 0, propositions: Number(l?.propositions) || 0, demandes: Number(l?.demandes) || 0,
-      suggestions: Number(l?.suggestions) || 0 };
+      suggestions: Number(l?.suggestions) || 0, partages: Number(l?.partages) || 0, signalements: Number(l?.signalements) || 0 };
     rendreAlertesAdmin();
   } catch (e) { /* hors ligne : on garde l'état connu */ }
 }
 function rendreAlertesAdmin() {
-  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions + (a.demandes || 0) + (a.suggestions || 0) : 0;
+  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions + (a.demandes || 0) + (a.suggestions || 0) + (a.partages || 0) + (a.signalements || 0) : 0;
   $("btn-reglages").classList.toggle("alerte", n > 0);
   $("btn-reglages").setAttribute("aria-label", n ? `Paramètres (${n} élément${n > 1 ? "s" : ""} en attente)` : "Paramètres");
   const bloc = $("alertes-admin");
@@ -3093,6 +3104,8 @@ function rendreAlertesAdmin() {
   if (!n) { bloc.innerHTML = ""; return; }
   bloc.innerHTML = (a.comptes ? `<button type="button" data-alerte="comptes">${a.comptes} compte${a.comptes > 1 ? "s" : ""} à valider ›</button>` : "")
     + (a.demandes ? `<button type="button" data-alerte="demandes">${a.demandes} demande${a.demandes > 1 ? "s" : ""} de thèmes à traiter ›</button>` : "")
+    + (a.signalements ? `<button type="button" data-alerte="controle">${a.signalements} thème${a.signalements > 1 ? "s" : ""} signalé${a.signalements > 1 ? "s" : ""} par le contrôle ›</button>` : "")
+    + (a.partages ? `<button type="button" data-alerte="controle">${a.partages} thème${a.partages > 1 ? "s" : ""} partagé${a.partages > 1 ? "s" : ""} à valider ›</button>` : "")
     + (a.suggestions ? `<button type="button" data-alerte="suggestions">${a.suggestions} source${a.suggestions > 1 ? "s" : ""} proposée${a.suggestions > 1 ? "s" : ""} par les lecteurs ›</button>` : "")
     + (a.propositions ? `<button type="button" data-alerte="sources">${a.propositions} proposition${a.propositions > 1 ? "s" : ""} de source${a.propositions > 1 ? "s" : ""} à décider ›</button>` : "");
 }
@@ -3101,6 +3114,7 @@ $("alertes-admin").addEventListener("click", (e) => {
   if (b.dataset.alerte === "comptes") { $("btn-admin").click(); $("sec-comptes").open = true; return; }
   if (b.dataset.alerte === "demandes") { $("btn-admin").click(); $("sec-demandes").open = true; return; }
   if (b.dataset.alerte === "suggestions") { $("btn-admin").click(); $("sec-suggestions").open = true; return; }
+  if (b.dataset.alerte === "controle") { $("btn-admin").click(); $("sec-controle").open = true; return; }
   // Les propositions de sources (ajouts, retraits) sont sur l'accueil : on ferme les Paramètres et on y descend
   fermerReglages();
   setTimeout(() => {
@@ -3180,6 +3194,7 @@ function traiterOuverture() {
   if (o === "comptes") { ouvrirReglages(); $("btn-admin").click(); $("sec-comptes").open = true; }
   else if (o === "demandes") { ouvrirReglages(); $("btn-admin").click(); $("sec-demandes").open = true; }
   else if (o === "suggestions") { ouvrirReglages(); $("btn-admin").click(); $("sec-suggestions").open = true; }
+  else if (o === "partages" || o === "controle") { ouvrirReglages(); $("btn-admin").click(); $("sec-controle").open = true; }
   else if (o === "sources" && !$("propositions").classList.contains("cache")) {
     setTimeout(() => $("propositions").scrollIntoView({ behavior: "smooth", block: "start" }), 300);
   }
@@ -3408,6 +3423,64 @@ $("form-ajout-source").onsubmit = async (e) => {
   } catch (err) { $("ajout-msg").textContent = "Ajout impossible (connexion ?)"; }
   finally { if (b) b.disabled = false; }
 };
+
+/* ---------- Administration : contrôle des thèmes (signalements de nuit, partages à valider) ---------- */
+let numeroControle = 0, controleOccupe = false;
+async function chargerControle() {
+  const moi = ++numeroControle, uid = sessionCourante;
+  $("admin-signalements").innerHTML = $("admin-partages").innerHTML = '<li class="note">Chargement…</li>';
+  let sg, pt;
+  try { [sg, pt] = await Promise.all([sb.rpc("admin_signalements"), sb.rpc("admin_partages")]); }
+  catch (e) { sg = pt = { error: { message: "connexion ?" } }; }
+  if (moi !== numeroControle || uid !== sessionCourante) return;
+  const VERDICT = { illicite: "recherche illicite", particulier: "vise une personne" };
+  const sig = sg.error ? null : (sg.data ?? []).filter((x) => x && x.id != null);
+  const par = pt.error ? null : (pt.data ?? []).filter((x) => x && x.id != null);
+  $("admin-signalements").innerHTML = !sig ? `<li class="note">Indisponible : ${echapper(sg.error.message)}</li>`
+    : sig.length ? sig.map((x) => `<li data-signal="${Number(x.id)}"><div class="tete"><b>${echapper(x.nom)}</b>
+        <span class="etiquette alerte">${echapper(VERDICT[x.verdict] || x.verdict)}</span>${x.actif ? "" : ' <span class="etiquette">désactivé</span>'}</div>
+      <p class="note">Créé par ${echapper(x.email || "un compte supprimé")} · ${Number(x.nb_lecteurs) || 0} lecteur${Number(x.nb_lecteurs) > 1 ? "s" : ""}${x.partage ? " · partagé" : ""} · signalé le ${dateSug(x.controle_le)}</p>
+      ${x.motif ? `<p class="motif">${echapper(x.motif)}</p>` : ""}
+      <div class="pastilles"><button type="button" data-traiter="garder">${x.actif ? "Garder" : "Réactiver"}</button>
+        ${x.actif ? '<button type="button" data-traiter="desactiver">Désactiver</button>' : ""}
+        <button type="button" class="danger" data-traiter="supprimer">Supprimer le thème</button></div></li>`).join("")
+    : '<li class="note">Aucun thème signalé.</li>';
+  $("admin-partages").innerHTML = !par ? `<li class="note">Indisponible : ${echapper(pt.error.message)}</li>`
+    : par.length ? par.map((x) => `<li data-partage-admin="${Number(x.id)}"><div class="tete"><b>${echapper(x.nom)}</b></div>
+      <p class="note">${Number(x.nb_lecteurs) || 0} lecteur${Number(x.nb_lecteurs) > 1 ? "s" : ""} · créé le ${dateSug(x.cree_le)} · ${!x.verdict ? "pas encore contrôlé (contrôle la nuit prochaine)" : x.verdict === "ok" ? "contrôle de nuit : rien à signaler" : `signalé : ${echapper(VERDICT[x.verdict] || x.verdict)}`}</p>
+      <div class="pastilles"><button type="button" data-valider-partage="1">Proposer aux autres</button><button type="button" data-valider-partage="0">Ne pas proposer</button></div></li>`).join("")
+    : '<li class="note">Aucun thème partagé en attente.</li>';
+  const n = (sig?.length || 0) + (par?.length || 0);
+  $("nb-controle").textContent = n ? `· ${n}` : "";
+}
+async function actionControle(rpc, params, succes) {
+  if (controleOccupe) return;
+  controleOccupe = true;
+  const uid = sessionCourante;
+  $("controle-msg").textContent = "";
+  for (const b of $("sec-controle").querySelectorAll("[data-traiter], [data-valider-partage]")) b.disabled = true;
+  try {
+    const { error } = await sb.rpc(rpc, params);
+    if (uid !== sessionCourante) return;
+    if (error) $("controle-msg").textContent = erreurRpc(error);
+    else { toast(succes); etat.rechargerApres = true; }
+  } catch (e) { $("controle-msg").textContent = "Action impossible (connexion ?)"; }
+  finally { controleOccupe = false; if (uid === sessionCourante) { await chargerControle(); majAlertesAdmin(); } }
+}
+$("admin-signalements").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-traiter]"); if (!b || b.disabled) return;
+  const id = Number(b.closest("[data-signal]")?.dataset.signal), act = b.dataset.traiter;
+  if (!id) return;
+  if (act === "supprimer" && !await confirmer("Supprimer ce thème ?", "Le thème, ses abonnements et ses repérages d'articles sont effacés définitivement, pour tous les lecteurs qui le suivent.", "Supprimer", true)) return;
+  actionControle("admin_traiter_signalement", { p_id: id, p_action: act },
+    act === "supprimer" ? "Thème supprimé." : act === "desactiver" ? "Thème désactivé." : "Signalement levé : le thème est conservé.");
+});
+$("admin-partages").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-valider-partage]"); if (!b || b.disabled) return;
+  const id = Number(b.closest("[data-partage-admin]")?.dataset.partageAdmin), ok = b.dataset.validerPartage === "1";
+  if (!id) return;
+  actionControle("admin_valider_partage", { p_id: id, p_ok: ok }, ok ? "Thème proposé aux autres lecteurs." : "Thème non proposé aux autres.");
+});
 
 /* ---------- Administration : lancement manuel d'une édition ou d'une révision ---------- */
 const LANCEMENTS = {
