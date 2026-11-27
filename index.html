@@ -775,7 +775,7 @@
   </details>
   <details class="section" id="sec-perso"><summary><span class="ic" aria-hidden="true">📌</span><span class="txt"><span class="titre-sec">Mes thèmes personnels</span><small>Vos sujets suivis et votre limite</small></span></summary>
   <div id="bloc-perso">
-  <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Ces ajouts seront pris en compte à partir de la prochaine édition.</p>
+  <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Ces ajouts seront pris en compte à partir de la prochaine édition, qui reprendra aussi les articles des 7 derniers jours.</p>
   <div class="quota" id="quota-themes"></div>
   <ul class="liste-reglages" id="liste-themes"></ul>
   <form class="ligne" id="form-theme" autocomplete="off">
@@ -2347,7 +2347,7 @@ async function ajouterTheme(brut) {
     await rechargerThemes();
     if (data?.statut === "principal") return { ok: true, msg: `« ${data.nom} » est un thème principal : il est affiché.` };
     if (data?.statut === "existant") return { ok: true, msg: `« ${data.nom} » existait déjà : vous le suivez maintenant.` };
-    return { ok: true, msg: `« ${data?.nom ?? nom} » ajouté à vos thèmes.` };
+    return { ok: true, msg: `« ${data?.nom ?? nom} » ajouté à vos thèmes. Les premiers articles 📌 arriveront dès la prochaine édition, avec ceux des 7 derniers jours qui en parlent.` };
   } catch (e) { return { ok: false, msg: "Ajout impossible (connexion ?)" }; }
 }
 // Renvoie true si le suivi a réussi
