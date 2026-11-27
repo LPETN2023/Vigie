@@ -236,6 +236,12 @@
   .propositions .choix { display: flex; gap: 8px; }
   .propositions .choix button { flex: 1; padding: 8px 10px; border-radius: 10px; font-weight: 600; font-size: .85rem; background: var(--surface-2); color: var(--texte); }
   .propositions .choix .retirer { background: var(--non-doux); color: var(--non); }
+  .propositions .choix .ajouter { background: var(--ok-doux); color: var(--ok); }
+  .propositions .type-prop { margin: 12px 0 0; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .propositions .infos-prop { font-size: .8rem; color: var(--doux); overflow-wrap: anywhere; }
+  .propositions .themes-prop { display: flex; flex-wrap: wrap; gap: 4px; }
+  .propositions .themes-prop span { font-size: .75rem; padding: 2px 8px; border-radius: 999px; background: var(--accent-doux); color: var(--accent); }
+  .propositions .alerte-prop { font-size: .82rem; padding: 6px 10px; border-radius: 10px; background: var(--une-doux); color: var(--texte); }
   .propositions .etat { font-size: .8rem; color: var(--doux); }
 
   /* Les filtres passent à la ligne (pas de défilement horizontal caché au doigt) */
@@ -741,7 +747,7 @@
     <ul class="liste-admin" id="admin-demandes"></ul>
     </details>
     <details class="section" id="sec-notifs"><summary><span class="ic" aria-hidden="true">🔔</span><span class="txt"><span class="titre-sec">Notifications</span><small>Alertes sur cet appareil</small></span></summary>
-    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou qu'un retrait de source est proposé.</p>
+    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou que la révision propose d'ajouter ou de retirer une source.</p>
     <p class="note" id="notifs-etat"></p>
     <div class="pastilles">
       <button type="button" id="btn-notifs">Activer sur cet appareil</button>
@@ -1287,7 +1293,7 @@ async function charger() {
     editions("debut,fin,statut").order("debut", { ascending: false }).limit(1),
     derniere ? sb.from("syntheses").select("edition,points").eq("edition", derniere).maybeSingle() : Promise.resolve({ data: null }),
     sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
-    sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20),
+    sb.from("propositions").select("id,type,source,url,raison,decision,dossier,langue,themes,alertes,par_jour").eq("applique", false).order("cree_le").limit(30),
     editions("debut,fin,nb_articles,details").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
     sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees").eq("user_id", sessionCourante).maybeSingle(),
     sb.from("gardes").select("article_id").eq("user_id", sessionCourante).order("cree_le", { ascending: false }).limit(500)
@@ -1809,18 +1815,34 @@ async function chargerArticlesGardes() {
   } catch (e) { toast("Articles gardés indisponibles (connexion ?)"); return false; }
 }
 
-// Propositions de retrait de source : rien n'est retiré sans l'accord du lecteur
+// Propositions de la révision des sources (admin) : ajouts et retraits, rien n'est appliqué sans décision
 function rendrePropositions() {
   const p = etat.propositions || [], bloc = $("propositions");
   if (!p.length) { bloc.classList.add("cache"); return; }
+  const ajouts = p.filter((x) => x.type === "ajout"), retraits = p.filter((x) => x.type !== "ajout");
   const enAttente = p.filter((x) => !x.decision).length;
-  bloc.innerHTML = `<h2>🗂 ${enAttente ? `Retirer ${enAttente > 1 ? "ces sources" : "cette source"} ?` : "Vos décisions sur les sources"}</h2>
-    <p class="resume-revue">${enAttente ? "La révision des sources propose de ne plus suivre :" : "Elles seront prises en compte dès la prochaine collecte."}</p>
-    <ul>${p.map((x) => `<li><div><strong>${echapper(x.source)}</strong> — ${echapper(x.raison)}</div>
-      ${x.decision
-        ? `<div class="etat">${x.decision === "accepte" ? "✓ Sera retirée" : "✓ Conservée"} · <button class="lien" data-prop="${echapper(x.id)}" data-decision="">Annuler</button></div>`
-        : `<div class="choix"><button class="retirer" data-prop="${echapper(x.id)}" data-decision="accepte">Retirer</button><button data-prop="${echapper(x.id)}" data-decision="refuse">Garder</button></div>`}
-    </li>`).join("")}</ul>`;
+  const domaine = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } };
+  const alertes = (x) => (Array.isArray(x.alertes) ? x.alertes : []).filter((a) => a && typeof a.texte === "string")
+    .map((a) => `<div class="alerte-prop">${a.type === "volume" ? "📈" : a.type === "doublon" ? "🔁" : "⚠️"} ${echapper(a.texte)}</div>`).join("");
+  const decision = (x, oui, non, faitOui, faitNon) => x.decision
+    ? `<div class="etat">${x.decision === "accepte" ? faitOui : faitNon} · <button class="lien" data-prop="${echapper(x.id)}" data-decision="">Annuler</button></div>`
+    : `<div class="choix"><button class="${x.type === "ajout" ? "ajouter" : "retirer"}" data-prop="${echapper(x.id)}" data-decision="accepte">${oui}</button><button data-prop="${echapper(x.id)}" data-decision="refuse">${non}</button></div>`;
+  const ligneAjout = (x) => {
+    const th = Array.isArray(x.themes) ? x.themes.filter((t) => typeof t === "string") : [];
+    const infos = [domaine(x.url), x.dossier, x.langue && x.langue !== "fr" ? `en ${x.langue}` : "",
+      x.par_jour != null && Number.isFinite(Number(x.par_jour)) ? `≈ ${Number(x.par_jour).toLocaleString("fr-FR")} article${Number(x.par_jour) >= 2 ? "s" : ""} par jour` : ""].filter(Boolean);
+    return `<li><div><strong>${echapper(x.source)}</strong> — ${echapper(x.raison)}</div>
+      ${infos.length ? `<div class="infos-prop">${infos.map(echapper).join(" · ")}</div>` : ""}
+      ${th.length ? `<div class="themes-prop">${th.map((t) => `<span>${echapper(t)}</span>`).join("")}</div>` : ""}
+      ${alertes(x)}
+      ${decision(x, "Ajouter", "Ne pas ajouter", "✓ Sera ajoutée", "✓ Non ajoutée")}</li>`;
+  };
+  const ligneRetrait = (x) => `<li><div><strong>${echapper(x.source)}</strong> — ${echapper(x.raison)}</div>${alertes(x)}
+      ${decision(x, "Retirer", "Garder", "✓ Sera retirée", "✓ Conservée")}</li>`;
+  bloc.innerHTML = `<h2>🗂 ${enAttente ? "Sources à valider" : "Vos décisions sur les sources"}</h2>
+    <p class="resume-revue">${enAttente ? "La révision des sources propose ces changements ; rien n'est appliqué sans votre accord." : "Elles seront prises en compte dès la prochaine collecte."}</p>
+    ${ajouts.length ? `<h3 class="type-prop">Nouvelles sources proposées</h3><ul>${ajouts.map(ligneAjout).join("")}</ul>` : ""}
+    ${retraits.length ? `<h3 class="type-prop">Sources à retirer</h3><ul>${retraits.map(ligneRetrait).join("")}</ul>` : ""}`;
   bloc.classList.remove("cache");
 }
 $("propositions").addEventListener("click", async (e) => {
@@ -1828,7 +1850,7 @@ $("propositions").addEventListener("click", async (e) => {
   const decision = b.dataset.decision || null;
   b.disabled = true;
   const { data, error } = await sb.from("propositions")
-    .update({ decision, decide_le: decision ? new Date().toISOString() : null }).eq("id", +b.dataset.prop).select("id");
+    .update({ decision, decide_le: decision ? new Date().toISOString() : null }).eq("id", +b.dataset.prop).eq("applique", false).select("id");
   if (error) { b.disabled = false; toast("Décision non enregistrée : " + error.message); return; }
   // 0 ligne modifiée : la proposition a déjà été traitée par la révision entre-temps
   if (!data?.length) { toast("Cette proposition a déjà été traitée : la page se met à jour."); charger(); return; }
@@ -2882,13 +2904,13 @@ function rendreAlertesAdmin() {
   if (!n) { bloc.innerHTML = ""; return; }
   bloc.innerHTML = (a.comptes ? `<button type="button" data-alerte="comptes">${a.comptes} compte${a.comptes > 1 ? "s" : ""} à valider ›</button>` : "")
     + (a.demandes ? `<button type="button" data-alerte="demandes">${a.demandes} demande${a.demandes > 1 ? "s" : ""} de thèmes à traiter ›</button>` : "")
-    + (a.propositions ? `<button type="button" data-alerte="sources">${a.propositions} retrait${a.propositions > 1 ? "s" : ""} de source à décider ›</button>` : "");
+    + (a.propositions ? `<button type="button" data-alerte="sources">${a.propositions} proposition${a.propositions > 1 ? "s" : ""} de source${a.propositions > 1 ? "s" : ""} à décider ›</button>` : "");
 }
 $("alertes-admin").addEventListener("click", (e) => {
   const b = e.target.closest("[data-alerte]"); if (!b) return;
   if (b.dataset.alerte === "comptes") { $("btn-admin").click(); $("sec-comptes").open = true; return; }
   if (b.dataset.alerte === "demandes") { $("btn-admin").click(); $("sec-demandes").open = true; return; }
-  // Les propositions de retrait sont sur l'accueil : on ferme les Paramètres et on y descend
+  // Les propositions de sources (ajouts, retraits) sont sur l'accueil : on ferme les Paramètres et on y descend
   fermerReglages();
   setTimeout(() => {
     if (etat.vue === "journal") history.back();
