@@ -2315,11 +2315,14 @@ async function chargerSites() {
   }
   return m;
 }
-// Nom affiché d'une source : le média d'origine pour un article trouvé par Google Actualités
+// Nom affiché d'une source : le nom du média seul (table des sites, sinon nom du flux sans sa rubrique
+// « Le Monde – Pixels » → « Le Monde » ; pour Google Actualités, le média tiré du titre)
 function nomSource(a) {
-  if (!/^Google Actualit/i.test(a?.source || "")) return a?.source || "";
-  const x = siteArticle(a);
-  return etat.sites.get(x.cle)?.nom || (x.nom !== a.source ? x.nom : "") || x.cle || a.source;
+  if (!a) return "";
+  const x = siteArticle(a), connu = etat.sites.get(x.cle)?.nom;
+  if (connu) return connu;
+  if (/^Google Actualit/i.test(a.source || "")) return (x.nom !== a.source ? x.nom : "") || x.cle || a.source;
+  return (a.source || "").split(/\s[–—-]\s/)[0].trim() || x.cle;
 }
 const categorieSite = (cle) => { const c = etat.sites.get(cle)?.categorie; return CLES_CATEGORIES.has(c) ? c : "nonclasse"; };
 // État des sources : réglage enregistré (sites et catégories masqués), corrigé par un éventuel choix temporaire (« Afficher »),
