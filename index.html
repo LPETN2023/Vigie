@@ -106,8 +106,7 @@
   header.barre {
     position: sticky; top: 0; z-index: 20; height: calc(var(--entete) + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) 8px 0 16px; display: flex; align-items: center; gap: 4px;
-    background: color-mix(in srgb, var(--fond) 97%, transparent); backdrop-filter: saturate(180%) blur(14px);
-    -webkit-backdrop-filter: saturate(180%) blur(14px); border-bottom: 1px solid var(--filet);
+    background: var(--fond); border-bottom: 1px solid var(--filet);
   }
   .marque { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; }
   .marque img { width: 28px; height: 28px; border-radius: 7px; }
@@ -127,8 +126,7 @@
   .outils {
     position: sticky; top: calc(var(--entete) + env(safe-area-inset-top)); z-index: 19; display: flex; flex-wrap: wrap;
     align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--filet);
-    background: color-mix(in srgb, var(--fond) 97%, transparent); backdrop-filter: saturate(180%) blur(14px);
-    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    background: var(--fond);
   }
   .bascule {
     min-height: 36px; padding: 0 12px; border-radius: 999px; font-size: .85rem; font-weight: 600;
