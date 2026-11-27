@@ -138,6 +138,11 @@
   .bascule[aria-pressed="true"]::before { content: "✓ "; }
   @media (prefers-color-scheme: dark) { .bascule[aria-pressed="true"] { color: #0b1020; } }
   .outils .masques { font-size: .76rem; color: var(--doux); margin-right: auto; }
+  .bascule.filtre-actif { border-color: var(--accent); color: var(--accent); }
+  .panneau-sources { flex: 1 0 100%; padding: 4px 2px 6px; border-top: 1px solid var(--filet); }
+  .panneau-sources .cases { max-height: 45vh; overflow-y: auto; }
+  .panneau-sources button { border: 1px solid var(--filet); border-radius: 999px; padding: 6px 12px; background: var(--surface); color: var(--texte); font-size: .85rem; }
+  .panneau-sources button.principal { background: var(--accent); color: #fff; border-color: var(--accent); }
   .outils .recherche { flex: 1 0 100%; }
   .outils .recherche { position: relative; }
   .outils .recherche input { padding: 8px 48px 8px 12px; }
@@ -627,8 +632,10 @@
   <div class="outils" id="outils">
     <button class="bascule" id="b-lus" aria-pressed="false">Masquer lus</button>
     <button class="bascule" id="b-rejetes" aria-pressed="false">Masquer 👎</button>
+    <button class="bascule" id="b-sources" type="button" aria-expanded="false" aria-controls="panneau-sources">Sources ▾</button>
     <span class="masques" id="masques"></span>
     <button class="icone" id="b-loupe" aria-label="Rechercher" aria-expanded="false" title="Rechercher"><svg><use href="#i-loupe"/></svg></button>
+    <div class="choix-themes panneau-sources cache" id="panneau-sources" role="group" aria-label="Sources affichées"></div>
     <div class="recherche cache" id="zone-recherche">
       <input type="search" id="recherche" placeholder="Rechercher un mot-clé…" aria-label="Rechercher dans les articles" autocomplete="off">
       <button type="button" id="b-effacer" class="cache" aria-label="Effacer la recherche" title="Effacer la recherche">✕</button>
@@ -826,7 +833,7 @@ const $ = (id) => document.getElementById(id);
 const etat = {
   articles: [], votes: new Map(), synthese: null, jours: 1,
   vue: "accueil", liste: [], index: 0, ouvert: null, feuille: null,
-  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [] },
+  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [], sources_masquees: [] },
   prefsChargees: false, recherche: "", mots: [], ouMots: false,zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null,
   // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
   tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
@@ -835,6 +842,8 @@ const etat = {
   themesOuverts: false, // liste dépliable « Tous ▾ » des filtres
   // Choix des thèmes affichés : null = choix enregistré ; sinon choix temporaire { princ: Set(clés normalisées), perso: Set(ids) }
   choixThemes: null, brouillon: null, persoSeul: false,
+  // Sources masquées : null = choix enregistré ; sinon choix temporaire (Set de noms). sourcesOuvertes : panneau déplié
+  choixSources: null, brouillonSources: null, sourcesOuvertes: false,
   etiquettes: new Map(), // article_id -> [ids des thèmes perso du lecteur] (le serveur ne renvoie que les siens)
   admin: false, adminThemes: [], rechargerApres: false // administration (l'affichage seulement : chaque action est vérifiée côté serveur)
 };
@@ -1134,6 +1143,7 @@ async function demarrer(session) {
     etat.comptes = null; ouvrirDemande = null; $("tuto").classList.add("cache"); finTuto = null;
     etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
     etat.etiquettes = new Map(); etat.choixThemes = null; etat.brouillon = null; etat.themesOuverts = false; etat.persoSeul = false;
+    etat.choixSources = null; etat.brouillonSources = null; etat.sourcesOuvertes = false;
     etat.demandes = null; etat.limiteDefaut = null;
     if (dialogueEnCours) dialogueEnCours(null);
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
@@ -1169,7 +1179,7 @@ async function demarrer(session) {
     if (!r.error && r.data === false) oublierAbonnementPush(); // appareil abonné par un administrateur, utilisé par un autre compte
   }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
-  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,parcours_fini")
+  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees,parcours_fini")
     .eq("user_id", uid).maybeSingle();
   if (sessionCourante !== uid) return;
   if (!pf.error && !pf.data?.parcours_fini) { await ouvrirBienvenue(uid, pf.data); return; }
@@ -1221,6 +1231,7 @@ async function chargerEtiquettes(ids) {
 }
 async function charger() {
   const moi = ++numeroRequete;
+  if (etat.sourcesOuvertes) fermerPanneauSources(); // la liste des sources dépend de la période chargée
   $("grille").innerHTML = '<div class="chargement">Chargement…</div>';
 
   // Édition la plus récente (le jour même si elle existe)
@@ -1245,7 +1256,7 @@ async function charger() {
     sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
     sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20),
     editions("debut,fin,nb_articles,details").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
-    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques").eq("user_id", sessionCourante).maybeSingle(),
+    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees").eq("user_id", sessionCourante).maybeSingle(),
     sb.from("gardes").select("article_id").eq("user_id", sessionCourante).order("cree_le", { ascending: false }).limit(500)
   ]);
   if (moi !== numeroRequete) return;
@@ -1376,7 +1387,7 @@ function afficherSante(ok) {
 
 /* ---------- Préférences ---------- */
 function appliquerPrefs(r) {
-  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [] };
+  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [], sources_masquees: [] };
   if (r) {
     p.themes = (Array.isArray(r.themes) ? r.themes : []).filter((t) => t && typeof t.nom === "string" && t.nom.trim())
       .map((t) => ({ nom: t.nom.trim().slice(0, 60), categorie: !!t.categorie }));
@@ -1384,6 +1395,7 @@ function appliquerPrefs(r) {
       .map((z) => ({ type: z.type, code: String(z.code), nom: String(z.nom ?? z.code) }));
     p.masquer_lus = !!r.masquer_lus; p.masquer_rejetes = !!r.masquer_rejetes;
     p.perso_masques = (Array.isArray(r.perso_masques) ? r.perso_masques : []).map(Number).filter(Number.isInteger);
+    p.sources_masquees = (Array.isArray(r.sources_masquees) ? r.sources_masquees : []).filter((x) => typeof x === "string");
   }
   etat.prefs = p;
   recalcZone();
@@ -1417,7 +1429,8 @@ function sauverPrefs(...champs) {
 function majBascules() {
   $("b-lus").setAttribute("aria-pressed", String(etat.prefs.masquer_lus));
   $("b-rejetes").setAttribute("aria-pressed", String(etat.prefs.masquer_rejetes));
-  for (const id of ["b-lus", "b-rejetes", "btn-reglages"]) $(id).disabled = !etat.prefsChargees;
+  for (const id of ["b-lus", "b-rejetes", "b-sources", "btn-reglages"]) $(id).disabled = !etat.prefsChargees;
+  majBoutonSources();
 }
 
 /* ---------- Accueil ---------- */
@@ -1703,6 +1716,7 @@ function rendreBandeau(n) {
   });
   if (etat.choixThemes) puces.push(puce("🗂️ Thèmes choisis", 'data-retirer="choix"'));
   if (etat.persoSeul) puces.push(puce("📌 Mes thèmes", 'data-retirer="perso"'));
+  if (etat.choixSources) puces.push(puce("📰 Sources choisies", 'data-retirer="sources"'));
   if (etat.zoneSeule) puces.push(puce("📍 Ma zone", 'data-retirer="zone"'));
   if (etat.gardesSeuls) puces.push(puce("🔖 Gardés", 'data-retirer="gardes"'));
   const saisie = etat.recherche.trim();
@@ -1725,11 +1739,14 @@ $("bandeau").addEventListener("click", (e) => {
   else if (b.dataset.mot) { etat.mots.splice(+b.dataset.mot, 1); if (etat.mots.length < 2) etat.ouMots = false; }
   else if (b.dataset.retirer === "choix") { etat.choixThemes = null; fermerPanneauThemes(); etat.articles = sansMasques(etat.tous); }
   else if (b.dataset.retirer === "perso") etat.persoSeul = false;
+  else if (b.dataset.retirer === "sources") { etat.choixSources = null; fermerPanneauSources(); etat.articles = sansMasques(etat.tous); }
   else if (b.dataset.retirer === "zone") etat.zoneSeule = false;
   else if (b.dataset.retirer === "gardes") etat.gardesSeuls = false;
   else if (b.dataset.retirer === "tout") {
     effacerRecherche(); etat.zoneSeule = false; etat.gardesSeuls = false; etat.persoSeul = false;
-    if (etat.choixThemes) { etat.choixThemes = null; fermerPanneauThemes(); etat.articles = sansMasques(etat.tous); }
+    if (etat.choixThemes || etat.choixSources) {
+      etat.choixThemes = null; etat.choixSources = null; fermerPanneauThemes(); fermerPanneauSources(); etat.articles = sansMasques(etat.tous);
+    }
   }
   majListes();
 });
@@ -1806,7 +1823,7 @@ $("filtres").addEventListener("click", async (e) => {
     // « Tous » retire les autres filtres ; un appui quand il est déjà actif déroule (ou replie) le choix des thèmes
     const dejaTous = !etat.zoneSeule && !etat.gardesSeuls && !etat.persoSeul;
     etat.zoneSeule = false; etat.gardesSeuls = false; etat.persoSeul = false;
-    if (etat.themesOuverts) fermerPanneauThemes(); else if (dejaTous) etat.themesOuverts = true;
+    if (etat.themesOuverts) fermerPanneauThemes(); else if (dejaTous) { etat.themesOuverts = true; fermerPanneauSources(); }
     rendreListe(); return;
   }
   fermerPanneauThemes();
@@ -2122,6 +2139,68 @@ function apresVote(id) {
 }
 
 /* ---------- Masquage et recherche ---------- */
+/* ---------- Choix des sources affichées ---------- */
+// Cochée = affichée. Le brouillon contient les sources masquées ; « Afficher » vaut jusqu'à la fermeture, « Enregistrer » le garde sur le compte.
+function sourcesMasqueesActives() { return etat.choixSources || new Set(etat.prefs.sources_masquees || []); }
+function majBoutonSources() {
+  const n = sourcesMasqueesActives().size, b = $("b-sources");
+  b.textContent = `Sources${n ? ` · ${n} masquée${n > 1 ? "s" : ""}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
+  b.setAttribute("aria-expanded", String(etat.sourcesOuvertes));
+  b.classList.toggle("filtre-actif", n > 0);
+}
+function fermerPanneauSources() {
+  etat.sourcesOuvertes = false; etat.brouillonSources = null;
+  $("panneau-sources").classList.add("cache"); $("panneau-sources").innerHTML = "";
+  majBoutonSources();
+}
+function rendrePanneauSources() {
+  const br = etat.brouillonSources || (etat.brouillonSources = new Set(sourcesMasqueesActives()));
+  // Sources des articles de la période, plus celles déjà masquées (pour pouvoir les réafficher)
+  const parSource = new Map();
+  for (const a of etat.tous) if (a.source) { if (!parSource.has(a.source)) parSource.set(a.source, []); parSource.get(a.source).push(a); }
+  for (const nom of sourcesMasqueesActives()) if (!parSource.has(nom)) parSource.set(nom, []);
+  const noms = [...parSource.keys()].sort((x, y) => x.localeCompare(y, "fr"));
+  $("panneau-sources").innerHTML = `<p class="titre-choix">Sources de la période</p>
+    <div class="cases">${noms.length ? noms.map((nom) => `<label class="coche"><input type="checkbox" data-source="${echapper(nom)}"${br.has(nom) ? "" : " checked"}> ${echapper(nom)}
+      <span class="nb">${parSource.get(nom).length ? regrouper(parSource.get(nom)).liste.length : 0}</span></label>`).join("") : '<p class="note">Aucune source pour cette période.</p>'}</div>
+    <div class="actions-choix"><button type="button" data-src="tout">Tout cocher</button><button type="button" data-src="rien">Tout décocher</button></div>
+    <div class="actions-choix valider"><button type="button" data-src="afficher">Afficher</button>
+      <button type="button" data-src="enregistrer" class="principal">Enregistrer</button></div>
+    <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. « Enregistrer » garde ce choix sur votre compte. Les sources sans article sur la période n'apparaissent pas.</p>`;
+  $("panneau-sources").classList.remove("cache");
+  majBoutonSources();
+}
+$("b-sources").onclick = () => {
+  if (etat.sourcesOuvertes) { fermerPanneauSources(); return; }
+  fermerPanneauThemes(); if (etat.vue !== "journal") rendreListe();
+  etat.sourcesOuvertes = true; rendrePanneauSources();
+};
+$("panneau-sources").addEventListener("change", (e) => {
+  const c = e.target.closest("[data-source]"), br = etat.brouillonSources; if (!c || !br) return;
+  if (c.checked) br.delete(c.dataset.source); else br.add(c.dataset.source);
+});
+$("panneau-sources").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-src]"), br = etat.brouillonSources; if (!b || !br) return;
+  const tous = [...$("panneau-sources").querySelectorAll("[data-source]")].map((x) => x.dataset.source);
+  const act = b.dataset.src;
+  if (act === "tout") { etat.brouillonSources = new Set(); rendrePanneauSources(); return; }
+  if (act === "rien") { etat.brouillonSources = new Set([...br, ...tous]); rendrePanneauSources(); return; }
+  if (tous.length && tous.every((x) => br.has(x))) { toast("Cochez au moins une source."); return; }
+  const choix = new Set(br);
+  if (act === "enregistrer") {
+    etat.prefs.sources_masquees = [...choix];
+    sauverPrefs("sources_masquees");
+    etat.choixSources = null;
+    toast("Choix des sources enregistré.");
+  } else {
+    const enr = new Set(etat.prefs.sources_masquees || []);
+    etat.choixSources = choix.size === enr.size && [...choix].every((x) => enr.has(x)) ? null : choix;
+  }
+  fermerPanneauSources();
+  etat.articles = sansMasques(etat.tous);
+  if (etat.vue === "accueil") rendreAccueil(); else majListes(true);
+});
+
 $("b-lus").onclick = () => { etat.prefs.masquer_lus = !etat.prefs.masquer_lus; majBascules(); sauverPrefs("masquer_lus"); majListes(); };
 $("b-rejetes").onclick = () => { etat.prefs.masquer_rejetes = !etat.prefs.masquer_rejetes; majBascules(); sauverPrefs("masquer_rejetes"); majListes(); };
 let minuteurRecherche = null;
@@ -2437,7 +2516,8 @@ function rafraichirAffichage() {
 let cacheChoix = null;
 function viderCacheChoix() { cacheChoix = null; }
 function donneesChoix() {
-  if (!cacheChoix) cacheChoix = { choix: etat.choixThemes || choixEnregistre(), noms: new Set(etat.principaux.map((t) => normaliser(t.nom))) };
+  if (!cacheChoix) cacheChoix = { choix: etat.choixThemes || choixEnregistre(), noms: new Set(etat.principaux.map((t) => normaliser(t.nom))),
+    sources: etat.choixSources || new Set(etat.prefs.sources_masquees || []) };
   return cacheChoix;
 }
 const cleThemeArticle = (a) => {
@@ -2460,8 +2540,8 @@ const etiquettesArticle = (a) => {
 // Un article est affiché si son thème principal est coché, ou s'il concerne un thème perso coché
 function sansMasques(tab) {
   viderCacheChoix();
-  const c = choixActif();
-  return tab.filter((a) => c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id)));
+  const c = choixActif(), sm = donneesChoix().sources;
+  return tab.filter((a) => !sm.has(a.source) && (c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id))));
 }
 const dansMesThemes = (a) => { const c = choixActif(); return etiquettesArticle(a).some((t) => c.perso.has(t.id)); };
 function rendrePrincipaux(p = "") {
