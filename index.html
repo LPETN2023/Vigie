@@ -141,6 +141,7 @@
   .bascule.filtre-actif { border-color: var(--accent); color: var(--accent); }
   .panneau-sources { flex: 1 0 100%; padding: 4px 2px 6px; border-top: 1px solid var(--filet); }
   .panneau-sources .cases { max-height: 45vh; overflow-y: auto; }
+  .panneau-sources input[type="search"] { margin: 4px 0 6px; }
   .panneau-sources button { border: 1px solid var(--filet); border-radius: 999px; padding: 6px 12px; background: var(--surface); color: var(--texte); font-size: .85rem; }
   .panneau-sources button.principal { background: var(--accent); color: #fff; border-color: var(--accent); }
   .outils .recherche { flex: 1 0 100%; }
@@ -632,10 +633,10 @@
   <div class="outils" id="outils">
     <button class="bascule" id="b-lus" aria-pressed="false">Masquer lus</button>
     <button class="bascule" id="b-rejetes" aria-pressed="false">Masquer 👎</button>
-    <button class="bascule" id="b-sources" type="button" aria-expanded="false" aria-controls="panneau-sources">Sources ▾</button>
+    <button class="bascule" id="b-sources" type="button" aria-expanded="false" aria-controls="panneau-sources">Sites ▾</button>
     <span class="masques" id="masques"></span>
     <button class="icone" id="b-loupe" aria-label="Rechercher" aria-expanded="false" title="Rechercher"><svg><use href="#i-loupe"/></svg></button>
-    <div class="choix-themes panneau-sources cache" id="panneau-sources" role="group" aria-label="Sources affichées"></div>
+    <div class="choix-themes panneau-sources cache" id="panneau-sources" role="group" aria-label="Sites affichés"></div>
     <div class="recherche cache" id="zone-recherche">
       <input type="search" id="recherche" placeholder="Rechercher un mot-clé…" aria-label="Rechercher dans les articles" autocomplete="off">
       <button type="button" id="b-effacer" class="cache" aria-label="Effacer la recherche" title="Effacer la recherche">✕</button>
@@ -1716,7 +1717,7 @@ function rendreBandeau(n) {
   });
   if (etat.choixThemes) puces.push(puce("🗂️ Thèmes choisis", 'data-retirer="choix"'));
   if (etat.persoSeul) puces.push(puce("📌 Mes thèmes", 'data-retirer="perso"'));
-  if (etat.choixSources) puces.push(puce("📰 Sources choisies", 'data-retirer="sources"'));
+  if (etat.choixSources) puces.push(puce("📰 Sites choisis", 'data-retirer="sources"'));
   if (etat.zoneSeule) puces.push(puce("📍 Ma zone", 'data-retirer="zone"'));
   if (etat.gardesSeuls) puces.push(puce("🔖 Gardés", 'data-retirer="gardes"'));
   const saisie = etat.recherche.trim();
@@ -2139,12 +2140,26 @@ function apresVote(id) {
 }
 
 /* ---------- Masquage et recherche ---------- */
-/* ---------- Choix des sources affichées ---------- */
+/* ---------- Choix des sites affichés ---------- */
+// Un flux (ex. « Google Actualités – Rançongiciels ») regroupe des articles de nombreux sites : on filtre par site.
+const memoSite = new WeakMap();
+function siteArticle(a) {
+  let x = memoSite.get(a);
+  if (!x) {
+    let domaine = "";
+    try { domaine = new URL(a.url).hostname.toLowerCase().replace(/^www\./, ""); } catch (e) { /* adresse invalide */ }
+    // Titre Google Actualités : « Titre - Nom du média »
+    const m = /^Google Actualit/i.test(a.source || "") ? /\s[-–—]\s([^-–—]{2,60})$/.exec(a.titre_original || "") : null;
+    x = { cle: domaine || a.source || "?", nom: m ? m[1].trim() : (a.source || domaine) };
+    memoSite.set(a, x);
+  }
+  return x;
+}
 // Cochée = affichée. Le brouillon contient les sources masquées ; « Afficher » vaut jusqu'à la fermeture, « Enregistrer » le garde sur le compte.
 function sourcesMasqueesActives() { return etat.choixSources || new Set(etat.prefs.sources_masquees || []); }
 function majBoutonSources() {
   const n = sourcesMasqueesActives().size, b = $("b-sources");
-  b.textContent = `Sources${n ? ` · ${n} masquée${n > 1 ? "s" : ""}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
+  b.textContent = `Sites${n ? ` · ${n} masqué${n > 1 ? "s" : ""}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
   b.setAttribute("aria-expanded", String(etat.sourcesOuvertes));
   b.classList.toggle("filtre-actif", n > 0);
 }
@@ -2155,18 +2170,29 @@ function fermerPanneauSources() {
 }
 function rendrePanneauSources() {
   const br = etat.brouillonSources || (etat.brouillonSources = new Set(sourcesMasqueesActives()));
-  // Sources des articles de la période, plus celles déjà masquées (pour pouvoir les réafficher)
-  const parSource = new Map();
-  for (const a of etat.tous) if (a.source) { if (!parSource.has(a.source)) parSource.set(a.source, []); parSource.get(a.source).push(a); }
-  for (const nom of sourcesMasqueesActives()) if (!parSource.has(nom)) parSource.set(nom, []);
-  const noms = [...parSource.keys()].sort((x, y) => x.localeCompare(y, "fr"));
-  $("panneau-sources").innerHTML = `<p class="titre-choix">Sources de la période</p>
-    <div class="cases">${noms.length ? noms.map((nom) => `<label class="coche"><input type="checkbox" data-source="${echapper(nom)}"${br.has(nom) ? "" : " checked"}> ${echapper(nom)}
-      <span class="nb">${parSource.get(nom).length ? regrouper(parSource.get(nom)).liste.length : 0}</span></label>`).join("") : '<p class="note">Aucune source pour cette période.</p>'}</div>
+  // Sites des articles de la période, plus ceux déjà masqués (pour pouvoir les réafficher)
+  const parSite = new Map();
+  for (const a of etat.tous) {
+    const x = siteArticle(a);
+    if (!parSite.has(x.cle)) parSite.set(x.cle, { articles: [], noms: new Map() });
+    const g = parSite.get(x.cle);
+    g.articles.push(a); g.noms.set(x.nom, (g.noms.get(x.nom) || 0) + 1);
+  }
+  for (const cle of sourcesMasqueesActives()) if (!parSite.has(cle)) parSite.set(cle, { articles: [], noms: new Map() });
+  const nomDe = (cle) => [...parSite.get(cle).noms].sort((x, y) => y[1] - x[1])[0]?.[0] || cle;
+  const cles = [...parSite.keys()].sort((x, y) => nomDe(x).localeCompare(nomDe(y), "fr"));
+  $("panneau-sources").innerHTML = `<p class="titre-choix">Sites de la période</p>
+    <input type="search" id="filtre-sites" placeholder="Filtrer les sites" aria-label="Filtrer les sites" autocomplete="off">
+    <div class="cases">${cles.length ? cles.map((cle) => {
+      const nom = nomDe(cle), arts = parSite.get(cle).articles;
+      return `<label class="coche" data-recherche="${echapper(normaliser(nom + " " + cle))}"><input type="checkbox" data-source="${echapper(cle)}"${br.has(cle) ? "" : " checked"}>
+        <span>${echapper(nom)}${normaliser(nom) !== normaliser(cle) ? ` <span class="nb">${echapper(cle)}</span>` : ""}</span>
+        <span class="nb">· ${arts.length ? regrouper(arts).liste.length : 0}</span></label>`;
+    }).join("") : '<p class="note">Aucun site pour cette période.</p>'}</div>
     <div class="actions-choix"><button type="button" data-src="tout">Tout cocher</button><button type="button" data-src="rien">Tout décocher</button></div>
     <div class="actions-choix valider"><button type="button" data-src="afficher">Afficher</button>
       <button type="button" data-src="enregistrer" class="principal">Enregistrer</button></div>
-    <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. « Enregistrer » garde ce choix sur votre compte. Les sources sans article sur la période n'apparaissent pas.</p>`;
+    <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. « Enregistrer » garde ce choix sur votre compte. Les sites sans article sur la période n'apparaissent pas.</p>`;
   $("panneau-sources").classList.remove("cache");
   majBoutonSources();
 }
@@ -2175,23 +2201,32 @@ $("b-sources").onclick = () => {
   fermerPanneauThemes(); if (etat.vue !== "journal") rendreListe();
   etat.sourcesOuvertes = true; rendrePanneauSources();
 };
+$("panneau-sources").addEventListener("input", (e) => {
+  if (e.target.id !== "filtre-sites") return;
+  const q = normaliser(e.target.value);
+  for (const l of $("panneau-sources").querySelectorAll("[data-recherche]")) l.classList.toggle("cache", !!q && !l.dataset.recherche.includes(q));
+});
 $("panneau-sources").addEventListener("change", (e) => {
   const c = e.target.closest("[data-source]"), br = etat.brouillonSources; if (!c || !br) return;
   if (c.checked) br.delete(c.dataset.source); else br.add(c.dataset.source);
 });
 $("panneau-sources").addEventListener("click", (e) => {
   const b = e.target.closest("[data-src]"), br = etat.brouillonSources; if (!b || !br) return;
-  const tous = [...$("panneau-sources").querySelectorAll("[data-source]")].map((x) => x.dataset.source);
+  const cases = [...$("panneau-sources").querySelectorAll("[data-source]")];
+  const tous = cases.map((x) => x.dataset.source);
   const act = b.dataset.src;
-  if (act === "tout") { etat.brouillonSources = new Set(); rendrePanneauSources(); return; }
-  if (act === "rien") { etat.brouillonSources = new Set([...br, ...tous]); rendrePanneauSources(); return; }
-  if (tous.length && tous.every((x) => br.has(x))) { toast("Cochez au moins une source."); return; }
+  if (act === "tout" || act === "rien") {
+    // Seulement les sites visibles (après filtre) ; le filtre saisi est conservé
+    for (const c of cases) if (!c.closest(".cache")) { c.checked = act === "tout"; if (act === "tout") br.delete(c.dataset.source); else br.add(c.dataset.source); }
+    return;
+  }
+  if (tous.length && tous.every((x) => br.has(x))) { toast("Cochez au moins un site."); return; }
   const choix = new Set(br);
   if (act === "enregistrer") {
     etat.prefs.sources_masquees = [...choix];
     sauverPrefs("sources_masquees");
     etat.choixSources = null;
-    toast("Choix des sources enregistré.");
+    toast("Choix des sites enregistré.");
   } else {
     const enr = new Set(etat.prefs.sources_masquees || []);
     etat.choixSources = choix.size === enr.size && [...choix].every((x) => enr.has(x)) ? null : choix;
@@ -2541,7 +2576,7 @@ const etiquettesArticle = (a) => {
 function sansMasques(tab) {
   viderCacheChoix();
   const c = choixActif(), sm = donneesChoix().sources;
-  return tab.filter((a) => !sm.has(a.source) && (c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id))));
+  return tab.filter((a) => !sm.has(siteArticle(a).cle) && (c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id))));
 }
 const dansMesThemes = (a) => { const c = choixActif(); return etiquettesArticle(a).some((t) => c.perso.has(t.id)); };
 function rendrePrincipaux(p = "") {
