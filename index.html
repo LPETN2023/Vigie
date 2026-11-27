@@ -260,6 +260,35 @@
   .badge.avis--1 { background: var(--non-doux); color: var(--non); }
   .badge.payant { background: var(--surface-2); color: var(--doux); text-transform: none; letter-spacing: 0; }
   .badge.zone { background: var(--accent-doux); color: var(--accent); text-transform: none; letter-spacing: 0; }
+  .badge.perso { background: var(--une-doux); color: var(--une); text-transform: none; letter-spacing: 0; }
+  /* ---------- Pour vous (thèmes perso du lecteur) ---------- */
+  .pourvous { background: var(--surface); border-radius: 18px; box-shadow: var(--ombre); padding: 16px 18px 10px; margin-bottom: 22px; }
+  .pourvous .pv-tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 6px; }
+  .pourvous h2 { margin: 0; font-size: 1.1rem; }
+  .pourvous .date { color: var(--doux); font-size: .82rem; }
+  .pourvous .pv-article { display: block; width: 100%; text-align: left; padding: 9px 0; border-top: 1px solid var(--filet); color: var(--texte); }
+  .pourvous .pv-article .rub { display: block; font-size: .72rem; font-weight: 700; color: var(--une); }
+  .pourvous .pv-article .t { display: block; font-weight: 600; line-height: 1.35; }
+  .pourvous .pv-article .s { display: block; font-size: .8rem; color: var(--doux); }
+  .pourvous .lien { margin: 6px 0 4px; color: var(--accent); font-weight: 600; }
+  .pourvous .note { margin: 4px 0 6px; }
+  /* ---------- Choix des thèmes affichés (« Tous ▾ ») ---------- */
+  .filtres .choix-themes { display: block; }
+  .choix-themes .titre-choix { margin: 6px 0 2px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .choix-themes .cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0 12px; }
+  .choix-themes .coche { padding: 6px 0; font-size: .9rem; }
+  .choix-themes .coche .nb { color: var(--doux); font-size: .8rem; }
+  .choix-themes .actions-choix { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 10px; }
+  .choix-themes .actions-choix .espace { flex: 1; }
+  .filtres .choix-themes .actions-choix button.principal { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .choix-themes .note { margin: 8px 0 0; font-size: .8rem; }
+  /* ---------- Limite de thèmes et demandes ---------- */
+  .quota .note { margin: 4px 0; }
+  .liste-admin .motif { margin: 4px 0; font-style: italic; overflow-wrap: anywhere; }
+  .themes-demande { margin: 4px 0 8px; padding-left: 18px; font-size: .88rem; }
+  .themes-demande li { border: 0; padding: 3px 0; }
+  .pastilles .limite { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; }
+  .pastilles .limite input { width: 4.5em; padding: 5px 8px; border-radius: 10px; border: 1px solid var(--filet); background: var(--surface); color: var(--texte); }
   .meta.autres { margin-top: 6px; font-weight: 600; color: var(--accent); }
   @media (min-width: 700px) {
     .grille { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
@@ -462,6 +491,8 @@
   #tuto .actions { display: flex; gap: 8px; margin-top: 14px; }
   #tuto .actions .btn { flex: 1; }
   #tuto .tuto-retour { margin: 6px 0 0; min-height: 36px; }
+  #tuto .tuto-installer { margin: 4px 0 0; text-align: center; }
+  #tuto .tuto-installer .btn { width: 100%; }
   #tuto .tuto-ic { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); color: var(--texte); vertical-align: middle; }
   #tuto .tuto-ic svg { width: 18px; height: 18px; }
   #tuto .tuto-ex { margin: 4px 0 10px; text-align: left; }
@@ -550,6 +581,7 @@
       <button class="btn principal" type="button" id="tuto-suiv">Suivant</button>
     </div>
     <p class="tuto-retour"><button class="lien cache" type="button" id="tuto-prec">‹ Précédent</button></p>
+    <p class="tuto-installer cache" data-installer-bloc><button class="btn" type="button" data-installer>📲 Installer Vigie comme application</button></p>
   </div>
 </section>
 
@@ -607,6 +639,7 @@
   <main id="accueil">
     <details class="revue sante cache" id="sante"></details>
     <section class="essentiel cache" id="essentiel"></section>
+    <section class="pourvous cache" id="pourvous" aria-labelledby="pv-titre"></section>
     <section class="revue propositions cache" id="propositions"></section>
     <details class="revue cache" id="revue"></details>
     <div class="titre-section"><h2 id="titre-liste">Articles</h2><span id="maj"></span></div>
@@ -661,8 +694,15 @@
     <div class="msg" id="comptes-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-comptes"></ul>
     </details>
+    <details class="section" id="sec-demandes"><summary>Demandes de thèmes <span id="nb-demandes"></span></summary>
+    <p class="note">Les thèmes personnels d'un compte ne sont visibles ici que le temps de traiter sa demande : le lecteur en est informé quand il la fait.</p>
+    <p class="note" id="limite-defaut-note"></p>
+    <div class="pastilles"><button type="button" id="btn-limite-defaut">Modifier la limite par défaut</button></div>
+    <div class="msg" id="demandes-msg" role="alert"></div>
+    <ul class="liste-admin" id="admin-demandes"></ul>
+    </details>
     <details class="section" id="sec-notifs"><summary>Notifications</summary>
-    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation ou qu'un retrait de source est proposé.</p>
+    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou qu'un retrait de source est proposé.</p>
     <p class="note" id="notifs-etat"></p>
     <div class="pastilles">
       <button type="button" id="btn-notifs">Activer sur cet appareil</button>
@@ -671,11 +711,11 @@
     <div class="msg" id="notifs-msg" role="alert"></div>
     </details>
     <details class="section" id="sec-themes-admin"><summary>Gestion des thèmes</summary>
-    <p class="note">Catalogue commun à tous les lecteurs. Les auteurs des thèmes ne sont jamais affichés. Chaque action est tracée.</p>
+    <p class="note">Catalogue commun à tous les lecteurs. Les auteurs des thèmes ne sont pas affichés ici. Chaque action est tracée.</p>
     <h4>Doublons probables</h4>
     <div id="admin-doublons"></div>
     <h4>Tous les thèmes</h4>
-    <p class="note">Usage calculé sur les 12 derniers mois. « Dernier usage » : dernier article classé sous ce thème, ou dont le titre ou le résumé cite son nom. Les moins utilisés sont en tête.</p>
+    <p class="note">Usage calculé sur les 12 derniers mois. Thème principal : articles classés sous ce thème ; thème perso : articles repérés 📌 par la collecte. « Dernier usage » compte aussi les articles dont le titre ou le résumé cite son nom. Les moins utilisés sont en tête.</p>
     <input type="search" id="admin-filtre" placeholder="Filtrer les thèmes" aria-label="Filtrer les thèmes" autocomplete="off">
     <div class="msg" id="admin-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-liste"></ul>
@@ -685,11 +725,12 @@
   <div class="alertes-admin cache" id="alertes-admin" role="status"></div>
   <button class="lien cache" type="button" id="btn-admin">Administration (comptes, thèmes) ›</button>
   <details class="section"><summary>Thèmes principaux</summary>
-  <p class="note">Décochez un thème pour masquer ses articles sur votre compte. « Autre » reste toujours affiché.</p>
+  <p class="note">Décochez un thème pour masquer ses articles sur votre compte, sauf ceux qui concernent vos thèmes personnels. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
   </details>
   <details class="section"><summary>Mes thèmes personnels</summary>
-  <p class="note">Sujets à privilégier lors de la sélection des articles (sélection commune à tous les lecteurs). Pris en compte à la prochaine mise à jour.</p>
+  <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Pris en compte à la prochaine édition.</p>
+  <div class="quota" id="quota-themes"></div>
   <ul class="liste-reglages" id="liste-themes"></ul>
   <form class="ligne" id="form-theme" autocomplete="off">
     <input id="nouveau-theme" maxlength="60" placeholder="Ajouter un thème" aria-label="Nouveau thème">
@@ -712,6 +753,7 @@
     <button type="button" id="btn-mdp">Changer le mot de passe</button>
     <button type="button" id="btn-suppr-compte" class="danger">Supprimer mon compte</button>
   </div>
+  <p class="cache" data-installer-bloc><button class="lien" type="button" data-installer>📲 Installer Vigie comme application</button></p>
   <p><button class="lien" type="button" id="btn-revoir-tuto">Revoir la présentation de Vigie</button></p>
   </details>
   </div>
@@ -752,7 +794,7 @@ const RAISONS = {
 };
 const LANGUES = { en: "l'anglais", de: "l'allemand", es: "l'espagnol", it: "l'italien", nl: "le néerlandais", pt: "le portugais" };
 
-const BONUS_ZONE = 25;
+const BONUS_ZONE = 25, BONUS_PERSO = 25, MAX_POUR_VOUS = 5;
 // Régions (code INSEE) et leurs départements : « code nom|code nom… »
 const REGIONS = [
   ["84", "Auvergne-Rhône-Alpes", "01 Ain|03 Allier|07 Ardèche|15 Cantal|26 Drôme|38 Isère|42 Loire|43 Haute-Loire|63 Puy-de-Dôme|69 Rhône|73 Savoie|74 Haute-Savoie"],
@@ -781,15 +823,18 @@ const NOM_DEP = new Map(REGIONS.flatMap((r) => r.deps.map((d) => [d.code, d.nom]
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 const $ = (id) => document.getElementById(id);
 const etat = {
-  articles: [], votes: new Map(), synthese: null, jours: 1, theme: null,
+  articles: [], votes: new Map(), synthese: null, jours: 1,
   vue: "accueil", liste: [], index: 0, ouvert: null, feuille: null,
-  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false },
+  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [] },
   prefsChargees: false, recherche: "", mots: [], ouMots: false,zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null,
   // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
   tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
   perso: [], // thèmes personnels suivis : {id, nom, categorie, partage, actif, mien}
   gardes: new Set(), articlesGardes: [], gardesSeuls: false, // articles gardés par le lecteur
-  themesOuverts: false, // liste dépliable des thèmes dans les filtres
+  themesOuverts: false, // liste dépliable « Tous ▾ » des filtres
+  // Choix des thèmes affichés : null = choix enregistré ; sinon choix temporaire { princ: Set(clés normalisées), perso: Set(ids) }
+  choixThemes: null, brouillon: null, persoSeul: false,
+  etiquettes: new Map(), // article_id -> [ids des thèmes perso du lecteur] (le serveur ne renvoie que les siens)
   admin: false, adminThemes: [], rechargerApres: false // administration (l'affichage seulement : chaque action est vérifiée côté serveur)
 };
 let zoneDeps = new Set();
@@ -1087,6 +1132,8 @@ async function demarrer(session) {
     etat.admin = false; etat.adminThemes = []; etat.rechargerApres = false; etat.alertes = null; rendreAlertesAdmin();
     etat.comptes = null; ouvrirDemande = null; $("tuto").classList.add("cache"); finTuto = null;
     etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
+    etat.etiquettes = new Map(); etat.choixThemes = null; etat.brouillon = null; etat.themesOuverts = false; etat.persoSeul = false;
+    etat.demandes = null; etat.limiteDefaut = null;
     if (dialogueEnCours) dialogueEnCours(null);
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
@@ -1121,7 +1168,7 @@ async function demarrer(session) {
     if (!r.error && r.data === false) oublierAbonnementPush(); // appareil abonné par un administrateur, utilisé par un autre compte
   }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
-  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,parcours_fini")
+  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,parcours_fini")
     .eq("user_id", uid).maybeSingle();
   if (sessionCourante !== uid) return;
   if (!pf.error && !pf.data?.parcours_fini) { await ouvrirBienvenue(uid, pf.data); return; }
@@ -1154,6 +1201,23 @@ async function chargerLiesHorsPeriode(articles) {
     return rep.flatMap((r) => r.data ?? []).filter((a) => !connus.has(a.id));
   } catch (e) { return []; }
 }
+// Étiquettes « thème perso » des articles chargés. Le serveur ne renvoie que celles des thèmes que le lecteur suit.
+// null en cas d'échec (on garde alors les étiquettes déjà connues).
+async function chargerEtiquettes(ids) {
+  const res = new Map();
+  try {
+    for (let i = 0; i < ids.length; i += 200) {
+      const r = await sb.from("articles_themes").select("article_id,theme_id").in("article_id", ids.slice(i, i + 200));
+      if (r.error) return null;
+      for (const x of r.data ?? []) {
+        const a = Number(x.article_id), t = Number(x.theme_id);
+        if (!res.has(a)) res.set(a, []);
+        res.get(a).push(t);
+      }
+    }
+  } catch (e) { return null; }
+  return res;
+}
 async function charger() {
   const moi = ++numeroRequete;
   $("grille").innerHTML = '<div class="chargement">Chargement…</div>';
@@ -1180,7 +1244,7 @@ async function charger() {
     sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
     sb.from("propositions").select("id,source,raison,decision").eq("applique", false).order("cree_le").limit(20),
     editions("debut,fin,nb_articles,details").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
-    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes").eq("user_id", sessionCourante).maybeSingle(),
+    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques").eq("user_id", sessionCourante).maybeSingle(),
     sb.from("gardes").select("article_id").eq("user_id", sessionCourante).order("cree_le", { ascending: false }).limit(500)
   ]);
   if (moi !== numeroRequete) return;
@@ -1191,11 +1255,12 @@ async function charger() {
   const ids = arts.data.map((a) => a.id);
   const paquets = [];
   for (let i = 0; i < ids.length; i += 200) paquets.push(ids.slice(i, i + 200));
-  const [reponsesVotes, serveurLus, lies] = await Promise.all([
+  const [reponsesVotes, serveurLus, lies, etiq] = await Promise.all([
     Promise.all(paquets.map((p) => sb.from("votes").select("article_id,avis,raisons,commentaire")
       .eq("user_id", sessionCourante).in("article_id", p))),
     chargerLectures(ids),
-    chargerLiesHorsPeriode(arts.data)
+    chargerLiesHorsPeriode(arts.data),
+    chargerEtiquettes(ids)
   ]);
   for (const v of reponsesVotes) for (const x of v.data ?? []) votes.set(x.article_id, x);
   if (reponsesVotes.some((v) => v.error)) {
@@ -1206,6 +1271,15 @@ async function charger() {
   if (moi !== numeroRequete) return;
   if (!gd.error) etat.gardes = new Set((gd.data ?? []).map((g) => Number(g.article_id)));
   if (versionSuivisLancee === versionSuivis) appliquerPrincipaux(princ);
+  if (etiq) {
+    // Articles liés hors période : leurs étiquettes aussi (un thème perso coché les garde visibles)
+    const autres = await chargerEtiquettes(lies.map((a) => a.id));
+    if (moi !== numeroRequete) return;
+    if (autres) for (const [k, v] of autres) etiq.set(k, v);
+    etat.etiquettes = etiq;
+  }
+  if (pr.error) { etat.prefsChargees = false; majBascules(); }
+  else if (versionLancee === versionPrefs) { etat.prefsChargees = true; appliquerPrefs(pr.data); }
   etat.tous = arts.data;
   etat.articles = sansMasques(etat.tous);
   etat.horsPeriode = new Map();
@@ -1218,8 +1292,6 @@ async function charger() {
   etat.revue = rev.data ?? null;
   etat.propositions = props.data ?? [];
   etat.votes = votes;
-  if (pr.error) { etat.prefsChargees = false; majBascules(); }
-  else if (versionLancee === versionPrefs) { etat.prefsChargees = true; appliquerPrefs(pr.data); }
   for (const id of [...lireLocal("lus"), ...lireLocal(cleAttente())]) lus.add(id);
   if (serveurLus) for (const id of serveurLus) lus.add(id);
   synchroniserLocal();
@@ -1272,6 +1344,8 @@ function afficherFraicheur(ok) {
   $("fraicheur").classList.toggle("cache", !txt);
 }
 // Santé de la dernière édition : articles, sources en erreur, sources muettes depuis 48 h
+// Problèmes d'une édition : en rouge jusqu'à la première connexion qui suit celle où ils ont été vus
+const santeVueCetteFois = new Set();
 function afficherSante(ok) {
   const bloc = $("sante"), d = ok?.details;
   if (!ok || !d || typeof d !== "object") { bloc.classList.add("cache"); return; }
@@ -1282,24 +1356,33 @@ function afficherSante(ok) {
   if (ne) parts.push(`${ne} source${ne > 1 ? "s" : ""} en erreur`);
   if (nm) parts.push(`${nm} source${nm > 1 ? "s" : ""} muette${nm > 1 ? "s" : ""} depuis 48 h`);
   const total = Number(d.sources) || 0;
-  bloc.innerHTML = `<summary>📡 Dernière édition (${echapper(heure(ok.fin || ok.debut))}) · ${parts.join(" · ")}</summary>` +
+  const t = new Date(ok.fin || ok.debut);
+  const quand = `${t.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} à ${t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+  bloc.innerHTML = `<summary>📡 Dernière édition : ${echapper(quand)} · ${parts.join(" · ")}</summary>` +
     (ne || nm
       ? `<ul>${erreurs.map((e) => `<li><strong>${echapper(e.source)}</strong> — ${echapper(e.erreur || "erreur")}</li>`).join("")}` +
         `${muettes.map((m) => `<li><strong>${echapper(m)}</strong> — aucun article depuis 48 h</li>`).join("")}</ul>`
       : `<p class="resume-revue">${total ? `Les ${total} sources ont répondu.` : "Toutes les sources ont répondu."}</p>`);
-  bloc.classList.toggle("probleme", ne + nm > 0);
+  const cle = "sante_vue:" + sessionCourante, id = String(ok.fin || ok.debut);
+  let rouge = false;
+  if (ne + nm > 0) {
+    if (memoire(cle) !== id) { memoire(cle, id); santeVueCetteFois.add(id); }
+    rouge = santeVueCetteFois.has(id);
+  }
+  bloc.classList.toggle("probleme", rouge);
   bloc.classList.remove("cache");
 }
 
 /* ---------- Préférences ---------- */
 function appliquerPrefs(r) {
-  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false };
+  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [] };
   if (r) {
     p.themes = (Array.isArray(r.themes) ? r.themes : []).filter((t) => t && typeof t.nom === "string" && t.nom.trim())
       .map((t) => ({ nom: t.nom.trim().slice(0, 60), categorie: !!t.categorie }));
     p.zones = (Array.isArray(r.zones) ? r.zones : []).filter((z) => z && (z.type === "departement" || z.type === "region") && z.code != null)
       .map((z) => ({ type: z.type, code: String(z.code), nom: String(z.nom ?? z.code) }));
     p.masquer_lus = !!r.masquer_lus; p.masquer_rejetes = !!r.masquer_rejetes;
+    p.perso_masques = (Array.isArray(r.perso_masques) ? r.perso_masques : []).map(Number).filter(Number.isInteger);
   }
   etat.prefs = p;
   recalcZone();
@@ -1344,14 +1427,15 @@ function lieuZone(a) {
   return NOM_DEP.has(d) ? `${NOM_DEP.get(d)} (${d})` : d;
 }
 function badgesArticle(a) {
-  const z = lieuZone(a);
-  return (a.payant === true ? '<span class="badge payant">🔒 Payant</span>' : "") + (z ? `<span class="badge zone">📍 ${echapper(z)}</span>` : "");
+  const z = lieuZone(a), mes = etiquettesArticle(a);
+  return (mes.length ? `<span class="badge perso">📌 ${echapper(mes[0].nom)}${mes.length > 1 ? ` +${mes.length - 1}` : ""}</span>` : "") + (a.payant === true ? '<span class="badge payant">🔒 Payant</span>' : "") + (z ? `<span class="badge zone">📍 ${echapper(z)}</span>` : "");
 }
 const cacheTexte = new Map();
 function texteRecherche(a) {
   let t = cacheTexte.get(a.id);
   if (t === undefined) {
-    t = normaliser([a.titre, a.titre_original, a.resume, a.source, a.theme, ...(Array.isArray(a.lieux) ? a.lieux : [])].join(" "));
+    t = normaliser([a.titre, a.titre_original, a.resume, a.source, a.theme, ...(Array.isArray(a.lieux) ? a.lieux : []),
+      ...etiquettesArticle(a).map((x) => x.nom)].join(" "));
     cacheTexte.set(a.id, t);
   }
   return t;
@@ -1415,10 +1499,10 @@ function regrouper(tab) {
 // Filtres (thème, zone, recherche), tri avec bonus de zone, masquage, puis regroupement par sujet
 function listeFiltree() {
   const clauses = clausesRecherche();
-  const pts = (a) => (a.score || 0) + (dansZone(a) ? BONUS_ZONE : 0);
+  const pts = (a) => (a.score || 0) + (dansZone(a) ? BONUS_ZONE : 0) + (dansMesThemes(a) ? BONUS_PERSO : 0);
   const source = etat.gardesSeuls ? etat.articlesGardes : etat.articles;
   const base = source
-    .filter((a) => (!etat.theme || (a.theme || "Autre") === etat.theme) && (!etat.zoneSeule || dansZone(a))
+    .filter((a) => (!etat.persoSeul || dansMesThemes(a)) && (!etat.zoneSeule || dansZone(a))
       && correspond(a, clauses))
     .sort((x, y) => (y.edition || "").localeCompare(x.edition || "") || (y.a_la_une ? 1 : 0) - (x.a_la_une ? 1 : 0) || pts(y) - pts(x));
   // « Masquer 👎 » retire seulement les articles rejetés : le reste de leur groupe reste visible,
@@ -1495,36 +1579,21 @@ function rendreAccueil() {
 }
 
 function rendreListe() {
-  // Filtres par thème
-  const parTheme = new Map();
-  for (const a of etat.articles) { const t = a.theme || "Autre"; if (!parTheme.has(t)) parTheme.set(t, []); parTheme.get(t).push(a); }
-  const compte = new Map([...parTheme].map(([t, tab]) => [t, regrouper(tab).liste.length]));
-  if (etat.theme && !compte.has(etat.theme)) etat.theme = null;
-  const themes = [...compte.entries()].sort((x, y) => (x[0] === "Autre") - (y[0] === "Autre") || y[1] - x[1]);
-  // Catégories personnelles sans article : affichées grisées
-  const presents = new Set(themes.map(([t]) => normaliser(t)));
-  const vides = etat.perso.filter((t) => t.categorie && t.actif && !presents.has(normaliser(t.nom)));
+  viderCacheChoix();
+  // Filtres : Tous ▾ (choix des thèmes affichés), Gardés, Ma zone, Mes thèmes
   const nbZone = zoneDeps.size ? regrouper(etat.articles.filter(dansZone)).liste.length : 0;
+  const nbPerso = regrouper(etat.articles.filter(dansMesThemes)).liste.length;
   if (!zoneDeps.size) etat.zoneSeule = false;
+  if (!etat.perso.length) etat.persoSeul = false;
   if (!etat.gardes.size) etat.gardesSeuls = false;
-  // Toujours visibles : Tous, Gardés, Ma zone, et le thème choisi ; les autres thèmes sont dans une liste dépliable
-  const bouton = ([t, n]) => `<button data-theme="${echapper(t)}" aria-pressed="${etat.theme === t}">${echapper(t)} · ${n}</button>`;
-  const choisi = etat.theme ? themes.find(([t]) => t === etat.theme) : null;
-  // Ordre de la liste dépliée : thèmes principaux (ordre du catalogue), puis catégories personnelles
-  // (les plus fournies d'abord), « Autre » en dernier
-  const rangPrincipal = new Map(etat.principaux.map((p, i) => [normaliser(p.nom), i]));
-  const rang = ([t]) => t === "Autre" ? 1e6 : rangPrincipal.get(normaliser(t)) ?? 1e3;
-  const themesListe = [...themes].sort((x, y) => rang(x) - rang(y) || y[1] - x[1] || x[0].localeCompare(y[0], "fr"));
-  const nbThemes = themes.length + vides.length;
-  $("filtres").innerHTML = `<button data-theme="" aria-pressed="${!etat.theme && !etat.zoneSeule && !etat.gardesSeuls}">Tous · ${regrouper(etat.articles).liste.length}</button>` +
-    (etat.gardes.size ? `<button data-gardes="1" aria-pressed="${etat.gardesSeuls}">🔖 Gardés · ${etat.gardes.size}</button>` : "") +
+  const tous = !etat.zoneSeule && !etat.gardesSeuls && !etat.persoSeul;
+  $("filtres").innerHTML = `<button data-tous="1" class="depli-tous" aria-pressed="${tous}" aria-expanded="${etat.themesOuverts}" aria-controls="filtres-plus"
+      title="Choisir les thèmes affichés">Tous · ${regrouper(etat.articles).liste.length} <span aria-hidden="true">${etat.themesOuverts ? "▴" : "▾"}</span></button>` +
     (zoneDeps.size ? `<button data-zone="1" aria-pressed="${etat.zoneSeule}">📍 Ma zone · ${nbZone}</button>` : "") +
-    (choisi ? bouton(choisi) : "") +
-    (nbThemes ? `<button class="depli" data-plus="1" aria-expanded="${etat.themesOuverts}" aria-controls="filtres-plus">${etat.themesOuverts ? "Masquer les thèmes ▴" : `Autres thèmes · ${nbThemes} ▾`}</button>` : "") +
-    (etat.themesOuverts && nbThemes
-      ? `<div class="plus" id="filtres-plus" role="group" aria-label="Tous les thèmes">` + themesListe.map(bouton).join("") +
-        vides.map((t) => `<button disabled aria-disabled="true">${echapper(t.nom)} · 0</button>`).join("") + "</div>"
-      : "");
+    (etat.perso.length ? `<button data-perso="1" aria-pressed="${etat.persoSeul}">📌 Mes thèmes · ${nbPerso}</button>` : "") +
+    (etat.gardes.size ? `<button data-gardes="1" aria-pressed="${etat.gardesSeuls}">🔖 Gardés · ${etat.gardes.size}</button>` : "") +
+    (etat.themesOuverts ? panneauThemes() : "");
+  rendrePourVous();
 
   // Vignettes
   const liste = listeFiltree();
@@ -1544,6 +1613,75 @@ function rendreListe() {
   }).join("") : `<div class="chargement">${etat.gardesSeuls ? "Aucun article gardé ne correspond." : etat.articles.length ? "Aucun article ne correspond à vos filtres." : "Aucun article pour cette période."}</div>`;
   rendreBandeau(liste.length);
 }
+// Panneau « Tous ▾ » : thèmes généraux et thèmes perso du lecteur, à cocher. Les cases modifient un brouillon,
+// appliqué par « Afficher » (jusqu'à la fermeture de Vigie) ou « Enregistrer » (gardé sur le compte).
+function panneauThemes() {
+  const b = etat.brouillon || (etat.brouillon = clonerChoix(choixActif()));
+  const parCle = new Map();
+  for (const a of etat.tous) { const k = cleThemeArticle(a); if (!parCle.has(k)) parCle.set(k, []); parCle.get(k).push(a); }
+  const nb = (tab) => tab ? regrouper(tab).liste.length : 0;
+  const lignesP = [...etat.principaux.map((t) => [normaliser(t.nom), t.nom]), ["autre", "Autre"]].map(([k, nom]) =>
+    `<label class="coche"><input type="checkbox" data-choix-p="${echapper(k)}"${b.princ.has(k) ? " checked" : ""}> ${echapper(nom)} <span class="nb">${nb(parCle.get(k))}</span></label>`).join("");
+  const perso = etat.perso.filter((t) => t.actif);
+  const lignesT = perso.map((t) => {
+    const n = nb(etat.tous.filter((a) => (etat.etiquettes.get(a.id) || []).includes(t.id)));
+    return `<label class="coche"><input type="checkbox" data-choix-t="${t.id}"${b.perso.has(t.id) ? " checked" : ""}> 📌 ${echapper(t.nom)} <span class="nb">${n}</span></label>`;
+  }).join("");
+  return `<div class="plus choix-themes" id="filtres-plus" role="group" aria-label="Thèmes affichés">
+    <p class="titre-choix">Thèmes généraux</p><div class="cases">${lignesP}</div>
+    ${perso.length ? `<p class="titre-choix">Mes thèmes personnels</p><div class="cases">${lignesT}</div>` : ""}
+    <div class="actions-choix"><button type="button" data-choix="tout">Tout cocher</button><button type="button" data-choix="rien">Tout décocher</button>
+      <span class="espace"></span><button type="button" data-choix="afficher">Afficher</button>
+      <button type="button" data-choix="enregistrer" class="principal">Enregistrer</button></div>
+    <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. « Enregistrer » garde ce choix sur votre compte (« Autre » y reste toujours affiché). Un article d'un thème décoché reste visible s'il concerne l'un de vos thèmes personnels cochés.</p>
+  </div>`;
+}
+const clonerChoix = (c) => ({ princ: new Set(c.princ), perso: new Set(c.perso) });
+const memeChoix = (x, y) => x.princ.size === y.princ.size && x.perso.size === y.perso.size
+  && [...x.princ].every((k) => y.princ.has(k)) && [...x.perso].every((k) => y.perso.has(k));
+function fermerPanneauThemes() { etat.themesOuverts = false; etat.brouillon = null; }
+// Applique un choix de thèmes : recalcule les articles visibles et réaffiche
+function appliquerChoixThemes() {
+  etat.articles = sansMasques(etat.tous);
+  rendreListe();
+}
+function enregistrerChoixThemes(b) {
+  for (const t of etat.principaux) {
+    const affiche = b.princ.has(normaliser(t.nom));
+    if (affiche === etat.principauxMasques.has(t.id)) basculerPrincipal(t.id, affiche);
+  }
+  // Thèmes désactivés par l'admin : absents du panneau, leur choix enregistré est conservé tel quel
+  const inactifs = new Set(etat.perso.filter((t) => !t.actif).map((t) => t.id));
+  etat.prefs.perso_masques = [...etat.perso.filter((t) => t.actif && !b.perso.has(t.id)).map((t) => t.id),
+    ...(etat.prefs.perso_masques || []).filter((id) => inactifs.has(id))];
+  sauverPrefs("perso_masques");
+  etat.choixThemes = null;
+  toast(b.princ.has("autre") ? "Choix enregistré." : "Choix enregistré. « Autre » reste affiché.");
+}
+
+// « Pour vous » : articles de la période qui concernent les thèmes perso cochés (seulement si le lecteur en a)
+function rendrePourVous() {
+  const bloc = $("pourvous");
+  const visible = etat.perso.length > 0 && !etat.persoSeul && !etat.zoneSeule && !etat.gardesSeuls && !clausesRecherche().length;
+  if (!visible) { bloc.classList.add("cache"); return; }
+  const tous = regrouper(etat.articles.filter(dansMesThemes)).liste.slice().sort((x, y) => (y.score || 0) - (x.score || 0));
+  const choisis = tous.slice(0, MAX_POUR_VOUS);
+  bloc.innerHTML = `<div class="pv-tete"><h2 id="pv-titre">📌 Pour vous</h2>
+      <span class="date">${tous.length ? `${tous.length} article${tous.length > 1 ? "s" : ""} sur vos thèmes` : "Vos thèmes personnels"}</span></div>` +
+    (choisis.length
+      ? choisis.map((a) => `<button type="button" class="pv-article" data-ouvrir="${a.id}"><span class="rub">${echapper(etiquettesArticle(a).map((t) => t.nom).join(" · "))}</span>
+          <span class="t">${echapper(a.titre)}</span><span class="s">${echapper(a.source)}</span></button>`).join("") +
+        (tous.length > choisis.length ? `<button type="button" class="lien" data-pv-tout="1">Voir les ${tous.length} articles ›</button>` : "")
+      : `<p class="note">Aucun article sur vos thèmes pour cette période. Ils sont repérés lors de l'édition de chaque nuit.</p>`);
+  bloc.classList.remove("cache");
+}
+$("pourvous").addEventListener("click", (e) => {
+  if (e.target.closest("[data-pv-tout]")) { etat.persoSeul = true; etat.zoneSeule = false; etat.gardesSeuls = false; fermerPanneauThemes(); rendreListe(); return; }
+  const b = e.target.closest("[data-ouvrir]"); if (!b) return;
+  const a = etat.articles.find((x) => x.id === +b.dataset.ouvrir);
+  if (a) ouvrirLecteur(a);
+});
+
 // Bandeau des filtres actifs : une étiquette par filtre, chacune retirable, et le nombre d'articles affichés
 function rendreBandeau(n) {
   const b = $("bandeau");
@@ -1553,7 +1691,8 @@ function rendreBandeau(n) {
     if (i) puces.push(`<button type="button" class="op" data-op="1" title="Changer : tous les mots / au moins un">${etat.ouMots ? "ou" : "et"}</button>`);
     puces.push(puce(`🔎 « ${echapper(m.texte)} »`, `data-mot="${i}"`));
   });
-  if (etat.theme) puces.push(puce(echapper(etat.theme), 'data-retirer="theme"'));
+  if (etat.choixThemes) puces.push(puce("🗂️ Thèmes choisis", 'data-retirer="choix"'));
+  if (etat.persoSeul) puces.push(puce("📌 Mes thèmes", 'data-retirer="perso"'));
   if (etat.zoneSeule) puces.push(puce("📍 Ma zone", 'data-retirer="zone"'));
   if (etat.gardesSeuls) puces.push(puce("🔖 Gardés", 'data-retirer="gardes"'));
   const saisie = etat.recherche.trim();
@@ -1574,10 +1713,14 @@ $("bandeau").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.op) etat.ouMots = !etat.ouMots;
   else if (b.dataset.mot) { etat.mots.splice(+b.dataset.mot, 1); if (etat.mots.length < 2) etat.ouMots = false; }
-  else if (b.dataset.retirer === "theme") etat.theme = null;
+  else if (b.dataset.retirer === "choix") { etat.choixThemes = null; fermerPanneauThemes(); etat.articles = sansMasques(etat.tous); }
+  else if (b.dataset.retirer === "perso") etat.persoSeul = false;
   else if (b.dataset.retirer === "zone") etat.zoneSeule = false;
   else if (b.dataset.retirer === "gardes") etat.gardesSeuls = false;
-  else if (b.dataset.retirer === "tout") { effacerRecherche(); etat.theme = null; etat.zoneSeule = false; etat.gardesSeuls = false; }
+  else if (b.dataset.retirer === "tout") {
+    effacerRecherche(); etat.zoneSeule = false; etat.gardesSeuls = false; etat.persoSeul = false;
+    if (etat.choixThemes) { etat.choixThemes = null; fermerPanneauThemes(); etat.articles = sansMasques(etat.tous); }
+  }
   majListes();
 });
 // Articles gardés : chargés par identifiant, quelle que soit leur date (hors période affichée),
@@ -1589,12 +1732,14 @@ async function chargerArticlesGardes() {
   const connus = new Set(etat.tous.map((a) => a.id));
   const manquants = ids.filter((id) => !connus.has(id));
   try {
-    const [rep, repVotes, serveurLus] = await Promise.all([
+    const [rep, repVotes, serveurLus, etiq] = await Promise.all([
       Promise.all(lots(ids).map((l) => sb.from("articles").select(COLONNES).in("id", l))),
       Promise.all(lots(manquants).map((l) => sb.from("votes").select("article_id,avis,raisons,commentaire").eq("user_id", uid).in("article_id", l))),
-      manquants.length ? chargerLectures(manquants) : Promise.resolve(null)
+      manquants.length ? chargerLectures(manquants) : Promise.resolve(null),
+      manquants.length ? chargerEtiquettes(manquants) : Promise.resolve(null)
     ]);
     if (uid !== sessionCourante) return false;
+    if (etiq) for (const [k, v] of etiq) { etat.etiquettes.set(k, v); cacheTexte.delete(k); }
     if (rep.some((r) => r.error)) { toast("Articles gardés indisponibles pour le moment."); return false; }
     etat.articlesGardes = rep.flatMap((r) => r.data ?? []);
     for (const v of repVotes) for (const x of v.data ?? []) etat.votes.set(x.article_id, x);
@@ -1635,21 +1780,44 @@ $("propositions").addEventListener("click", async (e) => {
 
 $("filtres").addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
-  if (b.dataset.plus) { etat.themesOuverts = !etat.themesOuverts; rendreListe(); return; }
-  // Un choix referme la liste des thèmes (le thème choisi reste visible à côté de « Ma zone »)
-  etat.themesOuverts = false;
+  if (b.dataset.choix) {
+    const br = etat.brouillon; if (!br) return;
+    const act = b.dataset.choix;
+    if (act === "tout") { br.princ = new Set([...etat.principaux.map((t) => normaliser(t.nom)), "autre"]); br.perso = new Set(etat.perso.filter((t) => t.actif).map((t) => t.id)); rendreListe(); return; }
+    if (act === "rien") { br.princ = new Set(); br.perso = new Set(); rendreListe(); return; }
+    if (!br.princ.size && !br.perso.size) { toast("Cochez au moins un thème."); return; }
+    fermerPanneauThemes();
+    if (act === "enregistrer") enregistrerChoixThemes(br);
+    else etat.choixThemes = memeChoix(br, choixEnregistre()) ? null : br;
+    appliquerChoixThemes();
+    return;
+  }
+  if (b.dataset.tous) {
+    // « Tous » retire les autres filtres ; un appui quand il est déjà actif déroule (ou replie) le choix des thèmes
+    const dejaTous = !etat.zoneSeule && !etat.gardesSeuls && !etat.persoSeul;
+    etat.zoneSeule = false; etat.gardesSeuls = false; etat.persoSeul = false;
+    if (etat.themesOuverts) fermerPanneauThemes(); else if (dejaTous) etat.themesOuverts = true;
+    rendreListe(); return;
+  }
+  fermerPanneauThemes();
   if (b.dataset.gardes) {
     const uid = sessionCourante;
-    etat.gardesSeuls = !etat.gardesSeuls; etat.theme = null; etat.zoneSeule = false;
+    etat.gardesSeuls = !etat.gardesSeuls; etat.zoneSeule = false; etat.persoSeul = false;
     if (etat.gardesSeuls) {
       b.disabled = true;
       const ok = await chargerArticlesGardes();
       if (uid !== sessionCourante) return;
       if (!ok) etat.gardesSeuls = false;
     }
-  } else if (b.dataset.zone) { etat.zoneSeule = !etat.zoneSeule; etat.gardesSeuls = false; }
-  else { etat.theme = b.dataset.theme || null; etat.zoneSeule = false; etat.gardesSeuls = false; }
+  } else if (b.dataset.zone) { etat.zoneSeule = !etat.zoneSeule; etat.gardesSeuls = false; etat.persoSeul = false; }
+  else if (b.dataset.perso) { etat.persoSeul = !etat.persoSeul; etat.gardesSeuls = false; etat.zoneSeule = false; }
   rendreListe();
+});
+// Cases du panneau des thèmes : elles ne modifient que le brouillon
+$("filtres").addEventListener("change", (e) => {
+  const c = e.target, br = etat.brouillon; if (!br) return;
+  if (c.dataset.choixP !== undefined) { if (c.checked) br.princ.add(c.dataset.choixP); else br.princ.delete(c.dataset.choixP); }
+  else if (c.dataset.choixT !== undefined) { const id = Number(c.dataset.choixT); if (c.checked) br.perso.add(id); else br.perso.delete(id); }
 });
 $("grille").addEventListener("click", (e) => {
   // Vue en liste : un appui ouvre directement l'article (le mode journal reste accessible par son bouton)
@@ -1693,7 +1861,7 @@ function fiche(a, i) {
     <div class="pied">
       <button class="btn principal" data-lire="${a.id}">Lire l'article</button>
       <button class="vote plus" data-id="${a.id}" data-avis="1" data-actif="${v?.avis === 1 ? 1 : 0}" aria-label="J'aime">${svgVote("haut")}</button>
-      <button class="vote moins" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}" aria-label="Je n'aime pas">${svgVote("bas")}</button>
+      <button class="vote moins" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}" aria-label="J'aime pas">${svgVote("bas")}</button>
     </div>
   </article></section>`;
 }
@@ -1823,7 +1991,7 @@ function majBarreVote() {
   const v = etat.votes.get(a.id);
   $("barre-vote").innerHTML =
     `<button class="vote plus etiq" data-id="${a.id}" data-avis="1" data-actif="${v?.avis === 1 ? 1 : 0}">${svgVote("haut")}<span>J'aime</span></button>
-     <button class="vote moins etiq" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}">${svgVote("bas")}<span>Je n'aime pas</span></button>`;
+     <button class="vote moins etiq" data-id="${a.id}" data-avis="-1" data-actif="${v?.avis === -1 ? 1 : 0}">${svgVote("bas")}<span>J'aime pas</span></button>`;
 }
 // Garder un article (par compte) et le partager (lien d'origine + résumé)
 function majGarder() {
@@ -2023,9 +2191,8 @@ function rendreThemes() {
     ? etat.perso.map((t) => `<li><span class="nom">${echapper(t.nom)}${t.actif ? "" : ' <span class="note">(désactivé)</span>'}</span>
         <button class="icone" data-quitter="${t.id}" aria-label="Ne plus suivre le thème ${echapper(t.nom)}">✕</button>
         <div class="options">${t.mien
-          ? `<label class="coche"><input type="checkbox" data-cat="${t.id}"${t.categorie ? " checked" : ""}> aussi comme catégorie</label>
-             <label class="coche"><input type="checkbox" data-partage="${t.id}"${t.partage ? " checked" : ""}> proposer aux autres lecteurs</label>`
-          : '<span class="note">Thème partagé par un autre lecteur</span>'}</div></li>`).join("")
+          ? `<label class="coche"><input type="checkbox" data-partage="${t.id}"${t.partage ? " checked" : ""}> proposer aux autres lecteurs (sans votre nom)</label>`
+          : '<span class="note">Thème proposé par un autre lecteur</span>'}</div></li>`).join("")
     : '<li class="note">Aucun thème personnel.</li>';
 }
 $("form-theme").onsubmit = async (e) => {
@@ -2048,20 +2215,66 @@ $("liste-themes").addEventListener("click", async (e) => {
   await rechargerThemes(); // re-rend la liste (le bouton disparaît ou redevient actif)
   chargerSuggestions();
 });
-// Catégorie / partage : une modification à la fois par case, état relu depuis le serveur ensuite
+// Partage : une modification à la fois, état relu depuis le serveur ensuite
 $("liste-themes").addEventListener("change", async (e) => {
-  const c = e.target.closest("[data-cat],[data-partage]"); if (!c || !sessionCourante) return;
-  const id = Number(c.dataset.cat ?? c.dataset.partage), t = etat.perso.find((x) => x.id === id);
+  const c = e.target.closest("[data-partage]"); if (!c || !sessionCourante) return;
+  const id = Number(c.dataset.partage), t = etat.perso.find((x) => x.id === id);
   if (!t) return;
-  const champ = c.dataset.cat !== undefined ? "categorie" : "partage";
-  const valeurs = { categorie: t.categorie, partage: t.partage, [champ]: c.checked };
-  for (const x of $("liste-themes").querySelectorAll(`[data-cat="${id}"],[data-partage="${id}"]`)) x.disabled = true;
+  c.disabled = true;
   versionSuivis++;
   try {
-    const { error } = await sb.rpc("modifier_theme", { p_id: id, p_categorie: valeurs.categorie, p_partage: valeurs.partage });
+    const { error } = await sb.rpc("modifier_theme", { p_id: id, p_categorie: null, p_partage: c.checked });
     if (error) toast(erreurRpc(error));
   } catch (err) { toast("Modification impossible (connexion ?)"); }
   await rechargerThemes();
+});
+
+// Limite de thèmes personnels du compte et dernière demande de hausse
+let numeroQuota = 0;
+async function chargerQuota() {
+  const zone = $("quota-themes"), uid = sessionCourante, moi = ++numeroQuota;
+  if (!uid) return;
+  let r;
+  try { r = await sb.rpc("mon_quota_themes"); } catch (e) { r = { error: e }; }
+  if (uid !== sessionCourante || moi !== numeroQuota) return;
+  if (r.error || !r.data) { zone.innerHTML = ""; return; }
+  const q = r.data, lim = Number(q.limite) || 0, n = Number(q.utilises) || 0, d = q.demande;
+  const date = (x) => x ? new Date(x).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+  const recente = d && d.decide_le && Date.now() - new Date(d.decide_le).getTime() < 30 * 864e5;
+  let etatDemande = "", bouton = "";
+  if (d?.statut === "attente") {
+    etatDemande = `Demande de hausse envoyée le ${date(d.cree_le)} : en attente de l'administrateur.`;
+    bouton = '<button type="button" id="btn-annuler-demande">Annuler la demande</button>';
+  } else {
+    if (recente && d.statut === "acceptee") etatDemande = `Demande acceptée le ${date(d.decide_le)} : limite portée à ${Number(d.limite_accordee) || lim}.`;
+    else if (recente && d.statut === "refusee") etatDemande = `Demande refusée le ${date(d.decide_le)}.`;
+    if (recente && d.reponse) etatDemande += ` Réponse : « ${d.reponse} »`;
+    bouton = '<button type="button" id="btn-demander-plus">Demander plus de thèmes</button>';
+  }
+  zone.innerHTML = `<p class="note"><b>${n} thème${n > 1 ? "s" : ""} sur ${lim}</b> autorisé${lim > 1 ? "s" : ""} pour votre compte.${etatDemande ? " " + echapper(etatDemande) : ""}</p>
+    ${n >= lim || d?.statut === "attente" ? `<div class="pastilles">${bouton}</div>` : ""}`;
+}
+$("quota-themes").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b || !sessionCourante) return;
+  if (b.id === "btn-annuler-demande") {
+    if (!await confirmer("Annuler la demande ?", "Votre demande de hausse sera retirée.", "Annuler la demande")) return;
+    b.disabled = true;
+    try { const { error } = await sb.rpc("annuler_ma_demande"); toast(error ? erreurRpc(error) : "Demande annulée."); }
+    catch (err) { toast("Action impossible (connexion ?)"); }
+    chargerQuota();
+    return;
+  }
+  if (b.id !== "btn-demander-plus") return;
+  const motif = await dialogue({ titre: "Demander plus de thèmes",
+    texte: "Expliquez en quelques mots pourquoi vous avez besoin de thèmes supplémentaires. Pour décider, l'administrateur verra la liste de vos thèmes personnels.",
+    saisie: "", ok: "Envoyer", max: 500 });
+  if (typeof motif !== "string" || !motif.trim()) return;
+  b.disabled = true;
+  try {
+    const { error } = await sb.rpc("demander_hausse", { p_motif: motif.trim() });
+    toast(error ? erreurRpc(error) : "Demande envoyée à l'administrateur.");
+  } catch (err) { toast("Envoi impossible (connexion ?)"); }
+  chargerQuota();
 });
 
 // Thèmes proches de la saisie (anonymes), pour éviter les doublons
@@ -2194,10 +2407,13 @@ async function rechargerThemes() {
     const r = await chargerPrincipaux(uid);
     if (uid !== sessionCourante) return;
     if (v !== versionSuivis) continue;
+    const avant = new Set(etat.perso.map((t) => t.id));
     appliquerPrincipaux(r);
+    // Un thème perso tout juste suivi est coché dans le choix temporaire en cours
+    if (etat.choixThemes) for (const t of etat.perso) if (!avant.has(t.id) && t.actif) etat.choixThemes.perso.add(t.id);
     break;
   }
-  if (etat.reglages) { rendrePrincipaux(""); rendreThemes(); etat.prefsModif = true; }
+  if (etat.reglages) { rendrePrincipaux(""); rendreThemes(); chargerQuota(); etat.prefsModif = true; }
   else rafraichirAffichage();
 }
 // Réapplique masquage et catégories à l'affichage
@@ -2205,10 +2421,39 @@ function rafraichirAffichage() {
   etat.articles = sansMasques(etat.tous);
   if (etat.vue === "accueil") rendreAccueil(); else majListes(true);
 }
-function sansMasques(tab) {
-  const noms = new Set(etat.principaux.filter((t) => etat.principauxMasques.has(t.id)).map((t) => normaliser(t.nom)));
-  return noms.size ? tab.filter((a) => !noms.has(normaliser(a.theme || ""))) : tab;
+// Thèmes affichés : choix temporaire (« Afficher ») ou choix enregistré (thèmes principaux décochés, thèmes perso décochés).
+// « autre » regroupe « Autre » et tout thème qui n'est pas un thème principal actif.
+// Cache du choix actif et des noms de thèmes principaux : vidé au début de chaque calcul de liste (sansMasques, rendreListe)
+let cacheChoix = null;
+function viderCacheChoix() { cacheChoix = null; }
+function donneesChoix() {
+  if (!cacheChoix) cacheChoix = { choix: etat.choixThemes || choixEnregistre(), noms: new Set(etat.principaux.map((t) => normaliser(t.nom))) };
+  return cacheChoix;
 }
+const cleThemeArticle = (a) => {
+  const n = normaliser(a.theme || "Autre");
+  return donneesChoix().noms.has(n) ? n : "autre";
+};
+function choixEnregistre() {
+  const masquesPerso = new Set(etat.prefs.perso_masques || []);
+  return {
+    princ: new Set([...etat.principaux.filter((t) => !etat.principauxMasques.has(t.id)).map((t) => normaliser(t.nom)), "autre"]),
+    perso: new Set(etat.perso.filter((t) => t.actif && !masquesPerso.has(t.id)).map((t) => t.id))
+  };
+}
+const choixActif = () => donneesChoix().choix;
+// Thèmes perso (suivis, actifs) d'un article
+const etiquettesArticle = (a) => {
+  const ids = etat.etiquettes.get(a.id);
+  return ids ? etat.perso.filter((t) => t.actif && ids.includes(t.id)) : [];
+};
+// Un article est affiché si son thème principal est coché, ou s'il concerne un thème perso coché
+function sansMasques(tab) {
+  viderCacheChoix();
+  const c = choixActif();
+  return tab.filter((a) => c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id)));
+}
+const dansMesThemes = (a) => { const c = choixActif(); return etiquettesArticle(a).some((t) => c.perso.has(t.id)); };
 function rendrePrincipaux(p = "") {
   $(p + "liste-principaux").innerHTML = etat.principauxCharges && etat.principaux.length
     ? etat.principaux.map((t) => `<label class="coche"><input type="checkbox" data-principal="${Number(t.id)}"${etat.principauxMasques.has(t.id) ? "" : " checked"}> ${echapper(t.nom)}</label>`).join("")
@@ -2255,6 +2500,34 @@ const TUTO = [
     <li><b>Thèmes personnels</b> : sujets que vous ajoutez vous-même et que la sélection quotidienne privilégie. Ils sont proposés de manière anonyme aux autres lecteurs, sauf si vous désactivez cette option.</li></ul>
     <p>Ces réglages restent modifiables à tout moment dans les <b>Paramètres</b> ${icone("reglages")}.</p>` }
 ];
+/* ---------- Installation comme application ---------- */
+// Les boutons sont masqués quand Vigie tourne déjà comme application installée.
+let invitationInstall = null;
+const dejaInstallee = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function majInstaller() {
+  for (const b of document.querySelectorAll("[data-installer-bloc]")) b.classList.toggle("cache", dejaInstallee());
+}
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); invitationInstall = e; majInstaller(); });
+window.addEventListener("appinstalled", () => { invitationInstall = null; majInstaller(); toast("Vigie est installée."); });
+matchMedia("(display-mode: standalone)").addEventListener?.("change", majInstaller);
+async function installerAppli() {
+  if (invitationInstall) {
+    const inv = invitationInstall; invitationInstall = null;
+    try { await inv.prompt(); await inv.userChoice; } catch (e) { /* invitation déjà utilisée */ }
+    majInstaller();
+    return;
+  }
+  // Pas d'invitation du navigateur (iPhone, Firefox, ou invitation déjà refusée) : marche à suivre
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  await dialogue({ titre: "Installer Vigie",
+    texte: ios
+      ? "Dans Safari, touchez le bouton Partager (carré avec une flèche vers le haut), puis « Sur l'écran d'accueil »."
+      : "Ouvrez le menu du navigateur (⋮ ou …), puis choisissez « Installer l'application » ou « Ajouter à l'écran d'accueil ».",
+    ok: "Compris" });
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-installer]")) installerAppli(); });
+majInstaller();
+
 let etapeTuto = 0, finTuto = null;
 // Affiche la présentation ; `apres` est appelée à la fin (Terminer ou Passer)
 function ouvrirTuto(apres = null) {
@@ -2339,7 +2612,7 @@ function ouvrirReglages() {
   $("msg-theme").textContent = ""; $("filtre-zone").value = "";
   $("nouveau-theme").value = ""; fermerProches();
   $("suggestions").innerHTML = '<p class="note">Chargement…</p>';
-  rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions();
+  rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions(); chargerQuota();
   afficherVueAdmin(false);
   $("btn-admin").classList.toggle("cache", !etat.admin);
   rendreAlertesAdmin(); majAlertesAdmin(); fermerSections("#vue-reglages");
@@ -2361,13 +2634,13 @@ function masquerReglages() {
 function afficherVueAdmin(oui) {
   $("vue-admin").classList.toggle("cache", !oui);
   $("vue-reglages").classList.toggle("cache", oui);
-  $("reglages-titre").textContent = oui ? "Administration des thèmes" : "Paramètres";
+  $("reglages-titre").textContent = oui ? "Administration" : "Paramètres";
   $("reglages").scrollTop = 0;
 }
 $("btn-admin").onclick = () => {
   afficherVueAdmin(true); fermerSections("#vue-admin");
   $("admin-filtre").value = ""; $("comptes-filtre").value = ""; $("admin-msg").textContent = "";
-  chargerAdmin(); chargerComptes(); majEtatNotifs();
+  chargerAdmin(); chargerComptes(); chargerDemandes(); majEtatNotifs();
 };
 // Sections repliables : une seule ouverte à la fois dans un même panneau (l'événement toggle ne remonte pas : capture)
 $("reglages").addEventListener("toggle", (e) => {
@@ -2391,23 +2664,25 @@ async function majAlertesAdmin() {
     const { data, error } = await sb.rpc("admin_en_attente");
     if (moi !== numeroAlertes || uid !== sessionCourante || error) return;
     const l = Array.isArray(data) ? data[0] : data;
-    etat.alertes = { comptes: Number(l?.comptes) || 0, propositions: Number(l?.propositions) || 0 };
+    etat.alertes = { comptes: Number(l?.comptes) || 0, propositions: Number(l?.propositions) || 0, demandes: Number(l?.demandes) || 0 };
     rendreAlertesAdmin();
   } catch (e) { /* hors ligne : on garde l'état connu */ }
 }
 function rendreAlertesAdmin() {
-  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions : 0;
+  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions + (a.demandes || 0) : 0;
   $("btn-reglages").classList.toggle("alerte", n > 0);
   $("btn-reglages").setAttribute("aria-label", n ? `Paramètres (${n} élément${n > 1 ? "s" : ""} en attente)` : "Paramètres");
   const bloc = $("alertes-admin");
   bloc.classList.toggle("cache", !n);
   if (!n) { bloc.innerHTML = ""; return; }
   bloc.innerHTML = (a.comptes ? `<button type="button" data-alerte="comptes">${a.comptes} compte${a.comptes > 1 ? "s" : ""} à valider ›</button>` : "")
+    + (a.demandes ? `<button type="button" data-alerte="demandes">${a.demandes} demande${a.demandes > 1 ? "s" : ""} de thèmes à traiter ›</button>` : "")
     + (a.propositions ? `<button type="button" data-alerte="sources">${a.propositions} retrait${a.propositions > 1 ? "s" : ""} de source à décider ›</button>` : "");
 }
 $("alertes-admin").addEventListener("click", (e) => {
   const b = e.target.closest("[data-alerte]"); if (!b) return;
   if (b.dataset.alerte === "comptes") { $("btn-admin").click(); $("sec-comptes").open = true; return; }
+  if (b.dataset.alerte === "demandes") { $("btn-admin").click(); $("sec-demandes").open = true; return; }
   // Les propositions de retrait sont sur l'accueil : on ferme les Paramètres et on y descend
   fermerReglages();
   setTimeout(() => {
@@ -2485,6 +2760,7 @@ function traiterOuverture() {
   if (!ouvrirDemande || !etat.admin || !etat.prefsChargees || $("app").classList.contains("cache")) return;
   const o = ouvrirDemande; ouvrirDemande = null;
   if (o === "comptes") { ouvrirReglages(); $("btn-admin").click(); $("sec-comptes").open = true; }
+  else if (o === "demandes") { ouvrirReglages(); $("btn-admin").click(); $("sec-demandes").open = true; }
   else if (o === "sources" && !$("propositions").classList.contains("cache")) {
     setTimeout(() => $("propositions").scrollIntoView({ behavior: "smooth", block: "start" }), 300);
   }
@@ -2502,6 +2778,8 @@ async function chargerComptes() {
   if (r.error) { etat.comptes = null; $("admin-comptes").innerHTML = `<li class="note">Indisponible : ${echapper(r.error.message)}</li>`; return; }
   etat.comptes = (r.data ?? []).filter((c) => c && typeof c.user_id === "string");
   etat.validationComptes = etat.comptes[0]?.validation_comptes !== false;
+  etat.limiteDefaut = Number(etat.comptes[0]?.limite_defaut) || null;
+  $("limite-defaut-note").textContent = etat.limiteDefaut ? `Limite par défaut : ${etat.limiteDefaut} thème${etat.limiteDefaut > 1 ? "s" : ""} personnel${etat.limiteDefaut > 1 ? "s" : ""} par compte.` : "";
   rendreComptes();
 }
 function rendreComptes() {
@@ -2530,7 +2808,8 @@ function rendreComptes() {
     return `<li><div class="tete">${echapper(c.email || "(sans e-mail)")} <span class="etiquette${cls}">${echapper(lib)}</span>
         ${ok ? "" : '<span class="etiquette">e-mail non confirmé</span>'}</div>
       <p class="note">Inscrit le ${date(c.cree_le)}${c.decide_le && !c.admin ? ` · décision le ${date(c.decide_le)}` : ""}</p>
-      ${actions || supprimer ? `<span class="pastilles">${actions}${supprimer}</span>` : ""}</li>`;
+      ${c.statut === "valide" || c.admin ? `<p class="note">Thèmes personnels : ${Number(c.nb_themes) || 0} sur ${Number(c.limite) || 0}${c.limite_perso == null ? " (limite par défaut)" : " (limite propre au compte)"}</p>` : ""}
+      ${actions || supprimer || c.statut === "valide" || c.admin ? `<span class="pastilles">${c.statut === "valide" || c.admin ? `<button type="button" data-compte="${id}" data-limite="1">Limite de thèmes</button>` : ""}${actions}${supprimer}</span>` : ""}</li>`;
   }).join("") : `<li class="note">${q ? "Aucun compte ne correspond." : "Aucun compte."}</li>`;
 }
 async function actionComptes(rpc, params, succes) {
@@ -2562,6 +2841,16 @@ $("admin-comptes").addEventListener("click", async (e) => {
     actionComptes("admin_supprimer_compte", { p_user: c.user_id }, "Compte supprimé.");
     return;
   }
+  if (b.dataset.limite) {
+    const saisi = await dialogue({ titre: `Limite de thèmes : ${c.email || "ce compte"}`,
+      texte: `Nombre de thèmes personnels autorisés (1 à 100). Laissez vide pour revenir à la limite par défaut (${Number(c.limite_defaut) || 5}).`,
+      saisie: c.limite_perso == null ? "" : String(c.limite_perso), ok: "Enregistrer", max: 3, type: "number" });
+    if (typeof saisi !== "string") return;
+    const v = saisi.trim() === "" ? null : Number(saisi);
+    if (v !== null && (!Number.isInteger(v) || v < 1 || v > 100)) { $("comptes-msg").textContent = "Indiquez un nombre entier de 1 à 100."; return; }
+    actionComptes("admin_regler_limite", { p_user: c.user_id, p_limite: v }, "Limite enregistrée.");
+    return;
+  }
   const valider = b.dataset.valider === "1";
   if (!valider && !await confirmer(c.statut === "valide" ? "Retirer l'accès ?" : "Refuser ce compte ?",
     `${c.email || "Ce compte"} ne pourra plus lire Vigie. Vous pourrez l'autoriser plus tard.`, c.statut === "valide" ? "Retirer" : "Refuser", true)) return;
@@ -2569,6 +2858,82 @@ $("admin-comptes").addEventListener("click", async (e) => {
     valider ? "Compte autorisé." : c.statut === "valide" ? "Accès retiré." : "Compte refusé.");
 });
 $("admin-retour").onclick = () => afficherVueAdmin(false);
+
+/* ---------- Administration : demandes de thèmes supplémentaires ---------- */
+let numeroDemandes = 0, demandesOccupe = false;
+async function chargerDemandes() {
+  const moi = ++numeroDemandes, uid = sessionCourante;
+  $("demandes-msg").textContent = "";
+  $("admin-demandes").innerHTML = '<li class="note">Chargement…</li>';
+  let r;
+  try { r = await sb.rpc("admin_demandes"); } catch (e) { r = { error: { message: "connexion ?" } }; }
+  if (moi !== numeroDemandes || uid !== sessionCourante) return;
+  if (r.error) { etat.demandes = null; $("nb-demandes").textContent = ""; $("admin-demandes").innerHTML = `<li class="note">Indisponible : ${echapper(r.error.message)}</li>`; return; }
+  etat.demandes = (r.data ?? []).filter((d) => d && d.id != null).map((d) => ({ ...d, id: Number(d.id) }));
+  $("nb-demandes").textContent = etat.demandes.length ? `· ${etat.demandes.length}` : "";
+  rendreDemandes();
+}
+function rendreDemandes() {
+  const liste = etat.demandes || [];
+  const date = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "";
+  $("admin-demandes").innerHTML = liste.length ? liste.map((d) => {
+    const themes = Array.isArray(d.themes) ? d.themes.filter((t) => t && typeof t.nom === "string") : [];
+    const proposee = Number(d.limite_demandee) || (Number(d.limite) || 0) + 5;
+    return `<li data-demande="${d.id}"><div class="tete">${echapper(d.email || "(sans e-mail)")} <span class="etiquette alerte">en attente</span></div>
+      <p class="note">Demande du ${date(d.cree_le)} · ${Number(d.utilises) || 0} thème${Number(d.utilises) > 1 ? "s" : ""} sur ${Number(d.limite) || 0}</p>
+      <p class="motif">« ${echapper(d.motif)} »</p>
+      <ul class="themes-demande">${themes.length ? themes.map((t) => {
+        const nl = Number(t.nb_lecteurs) || 0, na = Number(t.nb_articles) || 0;
+        return `<li><b>${echapper(t.nom)}</b> <span class="note">${t.auteur ? (t.partage ? "créé par ce lecteur · proposé aux autres" : "créé par ce lecteur · privé") : "proposé par un autre lecteur"}${t.actif === false ? " · désactivé" : ""}
+          · ${nl} lecteur${nl > 1 ? "s" : ""} · ${na} article${na > 1 ? "s" : ""} repéré${na > 1 ? "s" : ""} en 30 jours</span></li>`;
+      }).join("") : '<li class="note">Aucun thème personnel.</li>'}</ul>
+      <div class="pastilles"><label class="limite">Nouvelle limite <input type="number" min="1" max="100" value="${proposee}" data-nouvelle-limite></label>
+        <button type="button" data-decider="1">Accepter</button><button type="button" class="danger" data-decider="0">Refuser</button></div></li>`;
+  }).join("") : '<li class="note">Aucune demande en attente.</li>';
+}
+$("admin-demandes").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-decider]"); if (!b || demandesOccupe) return;
+  const li = b.closest("[data-demande]"), d = etat.demandes?.find((x) => x.id === Number(li?.dataset.demande));
+  if (!d) return;
+  const accepter = b.dataset.decider === "1";
+  const params = { p_id: d.id, p_accepter: accepter, p_limite: null, p_reponse: null };
+  if (accepter) {
+    const v = Number(li.querySelector("[data-nouvelle-limite]")?.value);
+    if (!Number.isInteger(v) || v < 1 || v > 100) { $("demandes-msg").textContent = "Indiquez une limite entière de 1 à 100."; return; }
+    params.p_limite = v;
+  } else {
+    const rep = await dialogue({ titre: "Refuser la demande ?", texte: "Message facultatif pour le lecteur (300 caractères au maximum).", saisie: "", ok: "Refuser", danger: true, max: 300 });
+    if (typeof rep !== "string") return;
+    params.p_reponse = rep.trim() || null;
+  }
+  demandesOccupe = true;
+  const uid = sessionCourante;
+  for (const x of $("admin-demandes").querySelectorAll("button, input")) x.disabled = true;
+  try {
+    const { error } = await sb.rpc("admin_decider_demande", params);
+    if (uid !== sessionCourante) return;
+    if (error) $("demandes-msg").textContent = erreurRpc(error);
+    else toast(accepter ? `Demande acceptée : limite portée à ${params.p_limite}.` : "Demande refusée.");
+  } catch (err) { $("demandes-msg").textContent = "Action impossible (connexion ?)"; }
+  finally { demandesOccupe = false; if (uid === sessionCourante) { await chargerDemandes(); chargerComptes(); majAlertesAdmin(); } }
+});
+$("btn-limite-defaut").onclick = async () => {
+  const saisi = await dialogue({ titre: "Limite par défaut", texte: "Nombre de thèmes personnels autorisés pour chaque compte sans limite propre (1 à 100).",
+    saisie: String(etat.limiteDefaut || 5), ok: "Enregistrer", max: 3, type: "number" });
+  if (typeof saisi !== "string") return;
+  const v = Number(saisi);
+  if (!Number.isInteger(v) || v < 1 || v > 100) { $("demandes-msg").textContent = "Indiquez un nombre entier de 1 à 100."; return; }
+  if (demandesOccupe) return;
+  demandesOccupe = true; $("btn-limite-defaut").disabled = true; $("demandes-msg").textContent = "";
+  const uid = sessionCourante;
+  try {
+    const { error } = await sb.rpc("admin_regler_limite_defaut", { p_limite: v });
+    if (uid !== sessionCourante) return;
+    if (error) $("demandes-msg").textContent = erreurRpc(error); else toast("Limite par défaut enregistrée.");
+  } catch (err) { $("demandes-msg").textContent = "Action impossible (connexion ?)"; }
+  finally { demandesOccupe = false; $("btn-limite-defaut").disabled = false; }
+  if (uid === sessionCourante) { chargerDemandes(); chargerComptes(); }
+};
 let numeroAdmin = 0;
 async function chargerAdmin() {
   const moi = ++numeroAdmin, uid = sessionCourante;
@@ -2597,9 +2962,9 @@ function rendreAdmin() {
     const perso = t.type === "perso", n = Number(t.nb_lecteurs) || 0, m = Number(t.nb_masques) || 0, c = Number(t.nb_classes) || 0;
     const usage = [t.dernier_classement, t.derniere_mention].filter(Boolean).sort().pop() || null;
     const infos = [perso ? `${n} lecteur${n > 1 ? "s" : ""}` : (m ? `masqué par ${m}` : "affiché pour tous"),
-      `${c} article${c > 1 ? "s" : ""} classé${c > 1 ? "s" : ""} en 12 mois`, `dernier usage : ${usage ? dateCourte(usage) : "aucun en 12 mois"}`];
+      `${c} article${c > 1 ? "s" : ""} ${perso ? "repéré" : "classé"}${c > 1 ? "s" : ""} en 12 mois`, `dernier usage : ${usage ? dateCourte(usage) : "aucun en 12 mois"}`];
     return `<li data-id="${t.id}"><div class="tete">${echapper(t.nom)}
-        <span class="etiquette">${perso ? (t.categorie ? "perso · catégorie" : "perso") : "principal"}</span>
+        <span class="etiquette">${perso ? "perso" : "principal"}</span>
         ${t.actif ? "" : '<span class="etiquette alerte">désactivé</span>'}
         ${perso && !t.partage ? '<span class="etiquette">privé</span>' : ""}
         ${t.hors_plafond ? '<span class="etiquette alerte">hors plafond : ignoré par la collecte</span>' : ""}</div>
@@ -2609,8 +2974,7 @@ function rendreAdmin() {
         <button type="button" data-act="renommer">Renommer</button>
         <button type="button" data-act="decrire">${t.description ? "Modifier la description" : "Décrire"}</button>
         <button type="button" data-act="actif">${t.actif ? "Désactiver" : "Réactiver"}</button>
-        ${perso ? `<button type="button" data-act="categorie">${t.categorie ? "Retirer des catégories" : "En faire une catégorie"}</button>
-                   <button type="button" data-act="principal">Promouvoir en principal</button>` : ""}
+        ${perso ? '<button type="button" data-act="principal">Promouvoir en principal</button>' : ""}
         <button type="button" data-act="fusionner">Fusionner dans…</button>
         <button type="button" data-act="supprimer">Supprimer</button>
       </div></li>`;
@@ -2673,8 +3037,6 @@ $("admin-liste").addEventListener("click", async (e) => {
   } else if (act === "actif") {
     if (t.actif && !await confirmer(`Désactiver « ${t.nom} » ?`, "Pour tous les lecteurs : il ne sera plus utilisé par la collecte, mais reste réactivable.", "Désactiver", true)) return;
     actionAdmin("admin_modifier_theme", { p_id: t.id, p_actif: !t.actif }, t.actif ? "Thème désactivé." : "Thème réactivé.");
-  } else if (act === "categorie") {
-    actionAdmin("admin_modifier_theme", { p_id: t.id, p_categorie: !t.categorie }, "Thème modifié.");
   } else if (act === "principal") {
     if (!await confirmer(`Promouvoir « ${t.nom} » ?`, "Il devient un thème principal, proposé à tous les lecteurs.", "Promouvoir")) return;
     actionAdmin("admin_modifier_theme", { p_id: t.id, p_principal: true }, "Thème promu en principal.");
@@ -2745,7 +3107,8 @@ $("bulle").onclick = (e) => {
 function chercherDansArticles(t) {
   if (dialogueEnCours || etat.feuille || !etat.ouvert) return;
   effacerRecherche();
-  etat.mots = [{ texte: t, exact: true }]; etat.theme = null; etat.zoneSeule = false; etat.gardesSeuls = false; etat.themesOuverts = false;
+  etat.mots = [{ texte: t, exact: true }]; etat.zoneSeule = false; etat.gardesSeuls = false; etat.persoSeul = false; fermerPanneauThemes();
+  if (etat.choixThemes) { etat.choixThemes = null; etat.articles = sansMasques(etat.tous); }
   // Le lecteur ouvert depuis le mode journal est deux pas plus loin dans l'historique que la liste.
   // Le gestionnaire popstate principal ferme d'abord le lecteur, puis on quitte le journal et on affiche la liste.
   const pas = etat.vue === "journal" ? 2 : 1;
