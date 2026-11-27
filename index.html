@@ -410,18 +410,35 @@
   #reglages { max-height: 90vh; }
   #reglages h3 { margin: 0 0 4px; font-size: 1.15rem; }
   #reglages h4 { margin: 18px 0 6px; font-size: .95rem; }
-  /* Sections repliables : titres bien distincts du contenu */
-  #reglages details.section { margin: 10px 0; }
-  #reglages details.section > summary {
-    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 13px 14px; border-radius: 12px; background: var(--surface-2); border-left: 4px solid var(--accent);
-    font-weight: 700; font-size: 1.02rem; color: var(--texte);
+  /* Menu des Paramètres : une ligne par section ; une section ouverte s'affiche seule, en pleine page */
+  #reglages details.section { margin: 8px 0; }
+  #reglages details.section > summary, #reglages .ligne-menu {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    padding: 12px 14px; border-radius: 14px; background: var(--surface-2); color: var(--texte); font: inherit;
   }
+  #reglages .ligne-menu { margin: 8px 0; border: 0; }
   #reglages details.section > summary::-webkit-details-marker { display: none; }
-  #reglages details.section > summary::after { content: "▾"; color: var(--accent); font-size: 1.1rem; transition: transform .2s; }
-  #reglages details.section:not([open]) > summary::after { transform: rotate(-90deg); }
-  #reglages details.section[open] > summary { background: var(--accent-doux); color: var(--accent); border-radius: 12px 12px 0 0; }
-  #reglages details.section[open] { padding: 0 2px 14px; border-bottom: 1px solid var(--filet); }
+  #reglages details.section > summary::after, #reglages .ligne-menu::after { content: "›"; color: var(--doux); font-size: 1.5rem; line-height: 1; margin-left: auto; }
+  #reglages .ic { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent-doux); font-size: 1.15rem; }
+  #reglages .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  #reglages .titre-sec { font-weight: 700; font-size: 1rem; }
+  #reglages .txt small { color: var(--doux); font-size: .8rem; font-weight: 400; }
+  #reglages details.section > summary:hover, #reglages .ligne-menu:hover { background: color-mix(in srgb, var(--surface-2) 80%, var(--accent) 8%); }
+  /* Section ouverte : en-tête « ‹ Titre » collé en haut, le reste du menu masqué */
+  #reglages.en-page #reglages-titre, #reglages.en-page > .actions,
+  #reglages.en-page #vue-reglages > :not(details.section[open]), #reglages.en-page #vue-admin > :not(details.section[open]) { display: none; }
+  #reglages.en-page { min-height: 75vh; }
+  #reglages details.section[open] { margin: 0; animation: page-entre .22s ease; }
+  #reglages details.section[open] > summary {
+    position: sticky; top: -10px; z-index: 3; margin: -10px -18px 12px; padding: 14px 18px; border-radius: 0;
+    background: var(--surface); border-bottom: 1px solid var(--filet);
+  }
+  #reglages details.section[open] > summary::before { content: "‹"; color: var(--accent); font-size: 1.9rem; line-height: 1; margin-right: -2px; }
+  #reglages details.section[open] > summary::after, #reglages details.section[open] > summary small { display: none; }
+  #reglages details.section[open] > summary .titre-sec { font-size: 1.2rem; }
+  #reglages details.section[open] > summary .ic { width: 34px; height: 34px; }
+  @keyframes page-entre { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { #reglages details.section[open] { animation: none; } }
   #reglages details.section > h4:first-of-type { margin-top: 6px; }
   #comptes-filtre { margin: 8px 0 2px; }
   .note { margin: 4px 0 8px; color: var(--doux); font-size: .82rem; }
@@ -443,8 +460,9 @@
   /* ---------- Ordinateur : plus de contraste, Paramètres en fenêtre centrée (le téléphone ne change pas) ---------- */
   @media (min-width: 900px) and (pointer: fine) {
     input, textarea { border-color: #c4cad6; }
-    #reglages details.section > summary { background: #e3e7ef; box-shadow: inset 0 0 0 1px #d3d8e2; }
-    #reglages details.section > summary:hover { background: #d9dfea; }
+    #reglages details.section:not([open]) > summary, #reglages .ligne-menu { background: #e3e7ef; box-shadow: inset 0 0 0 1px #d3d8e2; }
+    #reglages details.section:not([open]) > summary:hover, #reglages .ligne-menu:hover { background: #d9dfea; }
+    #reglages details.section[open] > summary { top: 0; margin: 0 -32px 12px; padding: 18px 32px; }
     #reglages {
       top: 50%; bottom: auto; transform: translateY(-50%); max-width: 760px; width: calc(100% - 48px);
       max-height: 86vh; border-radius: 20px; padding: 0 32px 0; box-shadow: 0 24px 60px rgba(0,0,0,.25);
@@ -458,8 +476,8 @@
   }
   @media (min-width: 900px) and (pointer: fine) and (prefers-color-scheme: dark) {
     input, textarea { border-color: #3a404b; }
-    #reglages details.section > summary { background: #2b3039; box-shadow: inset 0 0 0 1px #3a404b; }
-    #reglages details.section > summary:hover { background: #333944; }
+    #reglages details.section:not([open]) > summary, #reglages .ligne-menu { background: #2b3039; box-shadow: inset 0 0 0 1px #3a404b; }
+    #reglages details.section:not([open]) > summary:hover, #reglages .ligne-menu:hover { background: #333944; }
   }
   .liste-reglages .options { grid-column: 1 / -1; grid-row: 2; }
   .liste-reglages .options .coche { padding: 2px 0; font-size: .85rem; color: var(--doux); }
@@ -708,21 +726,21 @@
   <h3 id="reglages-titre">Paramètres</h3>
   <div id="vue-admin" class="cache">
     <button class="lien" type="button" id="admin-retour">‹ Retour aux paramètres</button>
-    <details class="section" id="sec-comptes"><summary>Gestion des comptes</summary>
+    <details class="section" id="sec-comptes"><summary><span class="ic" aria-hidden="true">👥</span><span class="txt"><span class="titre-sec">Gestion des comptes</span><small>Valider, limiter ou supprimer un compte</small></span></summary>
     <label class="coche"><input type="checkbox" id="admin-validation"> Valider chaque nouveau compte avant l'accès à l'application</label>
     <p class="note" id="admin-validation-note"></p>
     <input type="search" id="comptes-filtre" placeholder="Rechercher un compte (e-mail)" aria-label="Rechercher un compte" autocomplete="off">
     <div class="msg" id="comptes-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-comptes"></ul>
     </details>
-    <details class="section" id="sec-demandes"><summary>Demandes de thèmes <span id="nb-demandes"></span></summary>
+    <details class="section" id="sec-demandes"><summary><span class="ic" aria-hidden="true">📨</span><span class="txt"><span class="titre-sec">Demandes de thèmes <span id="nb-demandes"></span></span><small>Hausses de limite à traiter</small></span></summary>
     <p class="note">Les thèmes personnels d'un compte ne sont visibles ici que le temps de traiter sa demande : le lecteur en est informé quand il la fait.</p>
     <p class="note" id="limite-defaut-note"></p>
     <div class="pastilles"><button type="button" id="btn-limite-defaut">Modifier la limite par défaut</button></div>
     <div class="msg" id="demandes-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-demandes"></ul>
     </details>
-    <details class="section" id="sec-notifs"><summary>Notifications</summary>
+    <details class="section" id="sec-notifs"><summary><span class="ic" aria-hidden="true">🔔</span><span class="txt"><span class="titre-sec">Notifications</span><small>Alertes sur cet appareil</small></span></summary>
     <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou qu'un retrait de source est proposé.</p>
     <p class="note" id="notifs-etat"></p>
     <div class="pastilles">
@@ -731,7 +749,7 @@
     </div>
     <div class="msg" id="notifs-msg" role="alert"></div>
     </details>
-    <details class="section" id="sec-themes-admin"><summary>Gestion des thèmes</summary>
+    <details class="section" id="sec-themes-admin"><summary><span class="ic" aria-hidden="true">🏷️</span><span class="txt"><span class="titre-sec">Gestion des thèmes</span><small>Catalogue commun, doublons, fusions</small></span></summary>
     <p class="note">Catalogue commun à tous les lecteurs. Les auteurs des thèmes ne sont pas affichés ici. Chaque action est tracée.</p>
     <h4>Doublons probables</h4>
     <div id="admin-doublons"></div>
@@ -744,14 +762,14 @@
   </div>
   <div id="vue-reglages">
   <div class="alertes-admin cache" id="alertes-admin" role="status"></div>
-  <button class="lien cache" type="button" id="btn-admin">Administration (comptes, thèmes) ›</button>
-  <details class="section"><summary>Thèmes principaux</summary>
+  <button class="ligne-menu cache" type="button" id="btn-admin"><span class="ic" aria-hidden="true">🛡️</span><span class="txt"><span class="titre-sec">Administration</span><small>Comptes, demandes, thèmes, notifications</small></span></button>
+  <details class="section"><summary><span class="ic" aria-hidden="true">🗂️</span><span class="txt"><span class="titre-sec">Thèmes principaux</span><small>Choisir les thèmes affichés</small></span></summary>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte, sauf ceux qui concernent vos thèmes personnels. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
   </details>
-  <details class="section" id="sec-perso"><summary>Mes thèmes personnels</summary>
+  <details class="section" id="sec-perso"><summary><span class="ic" aria-hidden="true">📌</span><span class="txt"><span class="titre-sec">Mes thèmes personnels</span><small>Vos sujets suivis et votre limite</small></span></summary>
   <div id="bloc-perso">
-  <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Pris en compte à la prochaine édition.</p>
+  <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Ces ajouts seront pris en compte à partir de la prochaine édition.</p>
   <div class="quota" id="quota-themes"></div>
   <ul class="liste-reglages" id="liste-themes"></ul>
   <form class="ligne" id="form-theme" autocomplete="off">
@@ -765,12 +783,12 @@
   <div class="pastilles" id="suggestions"></div>
   </div>
   </details>
-  <details class="section"><summary>Zone géographique</summary>
+  <details class="section"><summary><span class="ic" aria-hidden="true">📍</span><span class="txt"><span class="titre-sec">Zone géographique</span><small>Départements signalés en priorité</small></span></summary>
   <p class="note" id="resume-zone"></p>
   <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
   <div class="liste-zone" id="liste-zone"></div>
   </details>
-  <details class="section"><summary>Mon compte</summary>
+  <details class="section"><summary><span class="ic" aria-hidden="true">👤</span><span class="txt"><span class="titre-sec">Mon compte</span><small>Mot de passe, application, présentation</small></span></summary>
   <p class="note" id="mon-email"></p>
   <div class="pastilles">
     <button type="button" id="btn-mdp">Changer le mot de passe</button>
@@ -2090,6 +2108,7 @@ window.addEventListener("popstate", (e) => {
   // Retour pendant une fenêtre de dialogue : on l'annule et on reste où l'on était
   if (dialogueEnCours) { dialogueEnCours(null); history.pushState(e.state, ""); return; }
   if (etat.feuille) { fermerFeuille(); history.pushState(e.state, ""); return; }
+  if (etat.reglages && pageReglages) { pageReglages.open = false; return; } // retour au menu des Paramètres
   if (etat.reglages) { masquerReglages(); return; }
   if (etat.ouvert) { fermerLecteur(); return; }
   if (etat.vue === "journal" && e.state?.vue !== "journal") fermerJournal();
@@ -2806,14 +2825,36 @@ $("btn-admin").onclick = () => {
   $("admin-filtre").value = ""; $("comptes-filtre").value = ""; $("admin-msg").textContent = "";
   chargerAdmin(); chargerComptes(); chargerDemandes(); majEtatNotifs();
 };
-// Sections repliables : une seule ouverte à la fois dans un même panneau (l'événement toggle ne remonte pas : capture)
+// Sections : une section ouverte s'affiche seule, comme une nouvelle page (l'événement toggle ne remonte pas : capture).
+// L'ouverture ajoute une entrée d'historique : le bouton retour du téléphone ramène au menu.
+let pageReglages = null;
 $("reglages").addEventListener("toggle", (e) => {
   const d = e.target;
-  if (!d.matches?.("details.section") || !d.open) return;
-  for (const autre of d.parentElement.querySelectorAll(":scope > details.section[open]")) if (autre !== d) autre.open = false;
+  if (!d.matches?.("details.section")) return;
+  if (d.open) {
+    for (const autre of $("reglages").querySelectorAll("details.section[open]")) if (autre !== d) autre.open = false;
+    if (!pageReglages) history.pushState({ vue: "reglages-page" }, "");
+    pageReglages = d;
+    $("reglages").classList.add("en-page");
+    $("reglages").scrollTop = 0;
+  } else if (pageReglages === d) {
+    pageReglages = null;
+    $("reglages").classList.remove("en-page");
+    $("reglages").scrollTop = 0;
+  }
 }, true);
+// Appui sur l'en-tête « ‹ Titre » d'une section ouverte : retour au menu par l'historique
+$("reglages").addEventListener("click", (e) => {
+  const sum = e.target.closest("details.section[open] > summary");
+  if (!sum) return;
+  e.preventDefault();
+  history.back();
+});
 // Sections repliables des Paramètres : toutes fermées à l'ouverture
-function fermerSections(racine) { for (const d of document.querySelectorAll(`${racine} details.section`)) d.open = false; }
+function fermerSections(racine) {
+  for (const d of document.querySelectorAll(`${racine} details.section`)) d.open = false;
+  pageReglages = null; $("reglages").classList.remove("en-page");
+}
 
 $("btn-mdp").onclick = () => choisirMotDePasse("Nouveau mot de passe");
 $("btn-suppr-compte").onclick = $("btn-suppr-attente").onclick = supprimerMonCompte;
