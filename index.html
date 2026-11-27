@@ -600,7 +600,7 @@
   <div class="carte">
     <div class="logo"><img src="icon.svg" alt=""><span>Bienvenue</span></div>
     <div id="b-zone">
-      <p class="etape">Étape 1 sur 2</p>
+      <p class="etape">Étape 1 sur 3</p>
       <h3>Votre zone géographique</h3>
       <p class="note">Les articles qui concernent votre zone seront signalés et remontés dans l'ordre. Vous pourrez la modifier plus tard dans les Paramètres.</p>
       <p class="note" id="b-resume-zone"></p>
@@ -608,10 +608,15 @@
       <div class="liste-zone" id="b-liste-zone"></div>
     </div>
     <div id="b-themes" class="cache">
-      <p class="etape">Étape 2 sur 2</p>
+      <p class="etape">Étape 2 sur 3</p>
       <h3>Les thèmes qui vous intéressent</h3>
-      <p class="note">Décochez les thèmes que vous ne voulez pas voir. Vous pourrez aussi ajouter vos propres thèmes dans les Paramètres.</p>
+      <p class="note">Décochez les thèmes que vous ne voulez pas voir. Vous pourrez les modifier plus tard dans les Paramètres.</p>
       <div class="liste-principaux" id="b-liste-principaux"></div>
+    </div>
+    <div id="b-perso" class="cache">
+      <p class="etape">Étape 3 sur 3 · facultative</p>
+      <h3>Vos thèmes personnels</h3>
+      <div id="b-perso-zone"></div>
     </div>
     <div class="msg" id="b-msg" role="alert"></div>
     <div class="actions">
@@ -741,7 +746,8 @@
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte, sauf ceux qui concernent vos thèmes personnels. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
   </details>
-  <details class="section"><summary>Mes thèmes personnels</summary>
+  <details class="section" id="sec-perso"><summary>Mes thèmes personnels</summary>
+  <div id="bloc-perso">
   <p class="note">Sujets que vous suivez personnellement : chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul, réunis dans « Pour vous » et le filtre « Mes thèmes ». Pris en compte à la prochaine édition.</p>
   <div class="quota" id="quota-themes"></div>
   <ul class="liste-reglages" id="liste-themes"></ul>
@@ -754,6 +760,7 @@
   <h4>Suggestions</h4>
   <p class="note">Thèmes suivis par d'autres lecteurs (anonymes). Touchez pour les suivre.</p>
   <div class="pastilles" id="suggestions"></div>
+  </div>
   </details>
   <details class="section"><summary>Zone géographique</summary>
   <p class="note" id="resume-zone"></p>
@@ -2438,7 +2445,7 @@ $("proches").addEventListener("click", async (e) => {
   let ok;
   if (b.dataset.type === "principal") {
     ok = etat.principaux.some((t) => t.id === id);
-    if (ok) { basculerPrincipal(id, true); rendrePrincipaux(""); toast("Thème principal réaffiché."); }
+    if (ok) { basculerPrincipal(id, true); rendrePrincipaux(etat.etapeBienvenue ? "b-" : ""); toast("Thème principal réaffiché."); }
     else toast("Thème indisponible pour le moment.");
   } else ok = await suivreTheme(id);
   if (ok) { $("nouveau-theme").value = ""; fermerProches(); } else b.disabled = false;
@@ -2545,6 +2552,7 @@ async function rechargerThemes() {
     break;
   }
   if (etat.reglages) { rendrePrincipaux(""); rendreThemes(); chargerQuota(); etat.prefsModif = true; }
+  else if (etat.etapeBienvenue) { rendreThemes(); chargerQuota(); }
   else rafraichirAffichage();
 }
 // Réapplique masquage et catégories à l'affichage
@@ -2690,6 +2698,11 @@ $("tuto-prec").onclick = () => { if (etapeTuto > 0) { etapeTuto--; majTuto(); } 
 $("tuto-passer").onclick = fermerTuto;
 $("btn-revoir-tuto").onclick = () => { fermerReglages(); setTimeout(() => ouvrirTuto(), 200); };
 
+// Le bloc « Mes thèmes personnels » des Paramètres sert aussi à l'étape 3 de l'accueil : on le déplace (mêmes éléments, mêmes actions)
+function placerBlocPerso(dansAccueil) {
+  const bloc = $("bloc-perso"), cible = dansAccueil ? $("b-perso-zone") : $("sec-perso");
+  if (bloc.parentElement !== cible) cible.appendChild(bloc);
+}
 async function ouvrirBienvenue(uid, prefs) {
   const r = await chargerPrincipaux(uid);
   if (sessionCourante !== uid) return;
@@ -2707,13 +2720,20 @@ function majBienvenue() {
   const e = etat.etapeBienvenue;
   $("b-zone").classList.toggle("cache", e !== 1);
   $("b-themes").classList.toggle("cache", e !== 2);
-  $("b-prec").classList.toggle("cache", e !== 2);
-  $("b-suiv").textContent = e === 2 ? "Terminer" : "Continuer";
+  $("b-perso").classList.toggle("cache", e !== 3);
+  $("b-prec").classList.toggle("cache", e < 2);
+  $("b-suiv").textContent = e === 3 ? "Terminer" : "Continuer";
+  if (e === 3) {
+    placerBlocPerso(true);
+    $("nouveau-theme").value = ""; $("msg-theme").textContent = ""; fermerProches();
+    $("suggestions").innerHTML = '<p class="note">Chargement…</p>';
+    rendreThemes(); chargerQuota(); chargerSuggestions();
+  }
   scrollTo(0, 0);
 }
-$("b-prec").onclick = () => { etat.etapeBienvenue = 1; majBienvenue(); };
+$("b-prec").onclick = () => { if (etat.etapeBienvenue > 1) etat.etapeBienvenue--; majBienvenue(); };
 $("b-suiv").onclick = async () => {
-  if (etat.etapeBienvenue === 1) { etat.etapeBienvenue = 2; majBienvenue(); return; }
+  if (etat.etapeBienvenue < 3) { etat.etapeBienvenue++; majBienvenue(); return; }
   const uid = sessionCourante, zones = structuredClone(etat.prefs.zones);
   if (!uid) return;
   $("b-suiv").disabled = true; $("b-msg").textContent = "";
@@ -2733,6 +2753,7 @@ $("b-suiv").onclick = async () => {
   entrerDepuisBienvenue();
 };
 function entrerDepuisBienvenue() {
+  placerBlocPerso(false);
   etat.etapeBienvenue = 0; etat.prefsModif = false;
   afficher("app");
   charger();
@@ -2740,6 +2761,7 @@ function entrerDepuisBienvenue() {
 $("b-entrer").onclick = entrerDepuisBienvenue;
 function ouvrirReglages() {
   if (etat.reglages || !etat.prefsChargees) return;
+  placerBlocPerso(false);
   etat.reglages = true; etat.prefsModif = false;
   $("msg-theme").textContent = ""; $("filtre-zone").value = "";
   $("nouveau-theme").value = ""; fermerProches();
