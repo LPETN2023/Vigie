@@ -139,6 +139,7 @@
   @media (prefers-color-scheme: dark) { .bascule[aria-pressed="true"] { color: #0b1020; } }
   .outils .masques { font-size: .76rem; color: var(--doux); margin-right: auto; }
   .bascule.filtre-actif { border-color: var(--accent); color: var(--accent); }
+  #b-sources { white-space: nowrap; }
   /* Menu déroulé : bouton mis en évidence */
   .bascule[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
   @media (prefers-color-scheme: dark) { .bascule[aria-expanded="true"] { color: #0b1020; } }
@@ -2162,7 +2163,10 @@ function siteArticle(a) {
 function sourcesMasqueesActives() { return etat.choixSources || new Set(etat.prefs.sources_masquees || []); }
 function majBoutonSources() {
   const n = sourcesMasqueesActives().size, b = $("b-sources");
-  b.textContent = `Sources${n ? ` · ${n} site${n > 1 ? "s" : ""} masqué${n > 1 ? "s" : ""}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
+  // Libellé court (le détail est dans l'infobulle et pour les lecteurs d'écran)
+  b.textContent = `Sources${n ? ` −${n}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
+  const detail = n ? `Sources : ${n} site${n > 1 ? "s" : ""} masqué${n > 1 ? "s" : ""}` : "Choisir les sources affichées";
+  b.title = detail; b.setAttribute("aria-label", detail);
   b.setAttribute("aria-expanded", String(etat.sourcesOuvertes));
   b.classList.toggle("filtre-actif", n > 0);
 }
