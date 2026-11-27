@@ -106,7 +106,7 @@
   header.barre {
     position: sticky; top: 0; z-index: 20; height: calc(var(--entete) + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) 8px 0 16px; display: flex; align-items: center; gap: 4px;
-    background: color-mix(in srgb, var(--fond) 88%, transparent); backdrop-filter: saturate(180%) blur(14px);
+    background: color-mix(in srgb, var(--fond) 97%, transparent); backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px); border-bottom: 1px solid var(--filet);
   }
   .marque { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; }
@@ -127,7 +127,7 @@
   .outils {
     position: sticky; top: calc(var(--entete) + env(safe-area-inset-top)); z-index: 19; display: flex; flex-wrap: wrap;
     align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--filet);
-    background: color-mix(in srgb, var(--fond) 92%, transparent); backdrop-filter: saturate(180%) blur(14px);
+    background: color-mix(in srgb, var(--fond) 97%, transparent); backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px);
   }
   .bascule {
@@ -152,7 +152,9 @@
   .panneau-sources .groupes-sources .cases { max-height: none; overflow: visible; padding-left: 26px; }
   .panneau-sources .groupe-sources { margin: 4px 0 6px; }
   .panneau-sources .cat-sources { border-bottom: 1px solid var(--filet); }
-  .liste-sources { max-height: none; }
+  #liste-sources { max-height: none; overflow: visible; }
+  .coche .nb { white-space: nowrap; }
+  #admin-retour { text-decoration: none; color: var(--accent); font-weight: 600; margin: 2px 0 6px; }
   .liste-sources .sites-cat > summary { cursor: pointer; font-size: .8rem; color: var(--accent); padding: 0 0 6px 26px; }
   .liste-sources .coupee .deps { opacity: .55; }
   .liste-sources .site-src { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -264,6 +266,7 @@
   }
   .filtres button[aria-pressed="true"] { background: var(--texte); color: var(--fond); border-color: var(--texte); }
   .filtres button:disabled { opacity: .45; cursor: default; }
+  @media (max-width: 420px) { .filtres { gap: 6px; } .filtres > button { padding: 6px 10px; font-size: .8rem; } }
 
   .grille { display: grid; gap: 10px; grid-template-columns: 1fr; }
   .vignette {
@@ -365,7 +368,7 @@
   .fiche .resume {
     flex: 1; min-height: 0; overflow: hidden; margin: 0; font-family: var(--serif); font-size: clamp(1rem, 4vw, 1.12rem);
     line-height: 1.55; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent);
-    text-align: justify; hyphens: auto; -webkit-hyphens: auto;
+    text-align: left; hyphens: auto; -webkit-hyphens: auto;
   }
   .fiche .pied {
     flex: 0 0 auto; display: flex; gap: 8px; align-items: center; padding: 12px 18px 16px; border-top: 1px solid var(--filet);
@@ -387,10 +390,14 @@
   #lecteur .barre-l {
     position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px;
     padding: calc(env(safe-area-inset-top) + 8px) 8px 8px; border-bottom: 1px solid var(--filet);
-    background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: color-mix(in srgb, var(--surface) 97%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   }
   #lecteur .barre-l .retour { display: inline-flex; align-items: center; gap: 4px; padding: 8px 10px; font-weight: 600; color: var(--accent); }
   #lecteur .barre-l .espace { flex: 1; }
+  #lecteur .barre-l > * { white-space: nowrap; flex: 0 0 auto; }
+  #lecteur .barre-l .action { padding: 8px 8px; }
+  .txt-court { display: none; }
+  @media (max-width: 480px) { #lecteur .barre-l { gap: 2px; } .txt-long { display: none; } .txt-court { display: inline; } }
   #lecteur .barre-l a { font-size: .85rem; padding: 8px 10px; border-radius: 10px; color: var(--accent); text-decoration: none; font-weight: 600; }
   .lecture { max-width: 700px; margin: 0 auto; padding: 0 20px calc(env(safe-area-inset-bottom) + 110px); }
   .lecture .media { height: min(38vh, 360px); margin: 0 -20px; }
@@ -399,8 +406,9 @@
   .lecture .texte p.avis-ia, .avis-ia {
     font-family: var(--sans); line-height: 1.45; font-size: .82rem; color: var(--doux); background: var(--surface-2); padding: 10px 12px; border-radius: 10px; margin: 0 0 18px;
   }
-  .lecture .resume-l { font-weight: 600; line-height: 1.55; margin: 0 0 18px; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
-  .lecture .texte p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.7; margin: 0 0 1.05em; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+  .lecture .resume-l { font-weight: 600; line-height: 1.55; margin: 0 0 18px; text-align: left; hyphens: auto; -webkit-hyphens: auto; }
+  .lecture .texte p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.7; margin: 0 0 1.05em; text-align: left; hyphens: auto; -webkit-hyphens: auto; }
+  @media (min-width: 640px) { .lecture .resume-l, .lecture .texte p, .fiche .resume { text-align: justify; } }
   .lecture .texte p.avis-ia, .lecture .texte p.indispo { text-align: left; hyphens: manual; -webkit-hyphens: manual; }
   .lecture .indispo { color: var(--doux); font-size: .95rem; }
   .meme-sujet { margin-top: 28px; border-top: 1px solid var(--filet); padding-top: 14px; }
@@ -413,6 +421,7 @@
     display: flex; gap: 8px; padding: 8px; background: var(--surface); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.18);
     border: 1px solid var(--filet);
   }
+  .barre-vote .vote { white-space: nowrap; }
 
   /* ---------- Feuille de vote ---------- */
   #voile { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.4); }
@@ -724,7 +733,7 @@
     <button class="action" type="button" id="l-garder" aria-pressed="false">🔖 Garder</button>
     <button class="action" type="button" id="l-partager">Partager</button>
     <a id="l-traduire" target="_blank" rel="noopener noreferrer" class="cache">Traduire ↗</a>
-    <a id="l-site" target="_blank" rel="noopener noreferrer">Voir sur le site ↗</a>
+    <a id="l-site" target="_blank" rel="noopener noreferrer"><span class="txt-long">Voir sur le site</span><span class="txt-court">Site</span> ↗</a>
   </div>
   <div class="lecture" id="lecture"></div>
   <div class="barre-vote" id="barre-vote"></div>
@@ -1685,7 +1694,7 @@ function rendreAccueil() {
         const refs = (p.articles || []).map((id) => parId.get(id)).filter(Boolean);
         return `<div class="point"><span class="puce"></span><div style="min-width:0">
           <div class="rub">${echapper(p.rubrique)}</div><p>${echapper(p.texte)}</p>
-          <div class="refs">${refs.map((a) => `<button data-ouvrir="${a.id}">${echapper(a.source)} · ${echapper(a.titre)}</button>`).join("")}</div>
+          <div class="refs">${refs.map((a) => `<button data-ouvrir="${a.id}">${echapper(nomSource(a))} · ${echapper(a.titre)}</button>`).join("")}</div>
         </div></div>`;
       }).join("") + "</div>";
     ess.classList.remove("cache");
@@ -1740,7 +1749,7 @@ function rendreListe() {
       <div class="txt">
         <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
           ${v ? `<span class="badge avis-${v.avis}">${v.avis > 0 ? "Aimé" : "Pas aimé"}</span>` : ""}
-          <span>${[echapper(a.source), heure(a.publie_le)].filter(Boolean).join(" · ")}</span></div>
+          <span>${[echapper(nomSource(a)), heure(a.publie_le)].filter(Boolean).join(" · ")}</span></div>
         <h3>${surligner(a.titre)}</h3>
         ${n ? `<div class="meta autres">+${n} autre${n > 1 ? "s" : ""} article${n > 1 ? "s" : ""}</div>` : ""}
       </div></button>`;
@@ -1806,7 +1815,7 @@ function rendrePourVous() {
       <span class="date">${tous.length ? `${tous.length} article${tous.length > 1 ? "s" : ""} sur vos thèmes` : "Vos thèmes personnels"}</span></div>` +
     (choisis.length
       ? choisis.map((a) => `<button type="button" class="pv-article" data-ouvrir="${a.id}"><span class="rub">${echapper(etiquettesArticle(a).map((t) => t.nom).join(" · "))}</span>
-          <span class="t">${echapper(a.titre)}</span><span class="s">${echapper(a.source)}</span></button>`).join("") +
+          <span class="t">${echapper(a.titre)}</span><span class="s">${echapper(nomSource(a))}</span></button>`).join("") +
         (tous.length > choisis.length ? `<button type="button" class="lien" data-pv-tout="1">Voir les ${tous.length} articles ›</button>` : "")
       : `<p class="note">Aucun article sur vos thèmes pour cette période. Ils sont repérés lors de l'édition de chaque nuit.</p>`);
   bloc.classList.remove("cache");
@@ -2010,7 +2019,7 @@ function fiche(a, i) {
       <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
         <span style="color:var(--accent);font-weight:600">${echapper(a.theme || "Actualité")}</span></div>
       <h2>${surligner(a.titre)}</h2>
-      <div class="meta" style="margin-bottom:10px">${[echapper(a.source), heure(a.publie_le), etiquetteLangue(a),
+      <div class="meta" style="margin-bottom:10px">${[echapper(nomSource(a)), heure(a.publie_le), etiquetteLangue(a),
         etat.nbAutres.get(a.id) ? `+${etat.nbAutres.get(a.id)} autre${etat.nbAutres.get(a.id) > 1 ? "s" : ""} article${etat.nbAutres.get(a.id) > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ")}</div>
       <p class="resume">${echapper(a.resume)}</p>
     </div>
@@ -2118,7 +2127,7 @@ function enteteLecture(a) {
   return `${imageSure(a.image) ? visuel(a) : ""}
     <h1>${echapper(a.titre)}</h1>
     <div class="meta">${a.a_la_une ? '<span class="badge une">À la une</span>' : ""}${badgesArticle(a)}
-      <span>${[echapper(a.source), heure(a.publie_le), echapper(a.theme || "")].filter(Boolean).join(" · ")}</span></div>
+      <span>${[echapper(nomSource(a)), heure(a.publie_le), echapper(a.theme || "")].filter(Boolean).join(" · ")}</span></div>
     <p class="resume-l">${echapper(a.resume)}</p>`;
 }
 // Articles chargés d'un sujet, y compris ceux hors de la période affichée (sans doublon)
@@ -2307,6 +2316,12 @@ async function chargerSites() {
     if (!data || data.length < 1000) break;
   }
   return m;
+}
+// Nom affiché d'une source : le média d'origine pour un article trouvé par Google Actualités
+function nomSource(a) {
+  if (!/^Google Actualit/i.test(a?.source || "")) return a?.source || "";
+  const x = siteArticle(a);
+  return etat.sites.get(x.cle)?.nom || (x.nom !== a.source ? x.nom : "") || x.cle || a.source;
 }
 const categorieSite = (cle) => { const c = etat.sites.get(cle)?.categorie; return CLES_CATEGORIES.has(c) ? c : "nonclasse"; };
 // État des sources : réglage enregistré (sites et catégories masqués), corrigé par un éventuel choix temporaire (« Afficher »),
