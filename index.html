@@ -139,6 +139,9 @@
   @media (prefers-color-scheme: dark) { .bascule[aria-pressed="true"] { color: #0b1020; } }
   .outils .masques { font-size: .76rem; color: var(--doux); margin-right: auto; }
   .bascule.filtre-actif { border-color: var(--accent); color: var(--accent); }
+  /* Menu déroulé : bouton mis en évidence */
+  .bascule[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { .bascule[aria-expanded="true"] { color: #0b1020; } }
   .panneau-sources { flex: 1 0 100%; padding: 4px 2px 6px; border-top: 1px solid var(--filet); }
   .panneau-sources .cases { max-height: 45vh; overflow-y: auto; }
   .panneau-sources input[type="search"] { margin: 4px 0 6px; }
@@ -633,7 +636,7 @@
   <div class="outils" id="outils">
     <button class="bascule" id="b-lus" aria-pressed="false">Masquer lus</button>
     <button class="bascule" id="b-rejetes" aria-pressed="false">Masquer 👎</button>
-    <button class="bascule" id="b-sources" type="button" aria-expanded="false" aria-controls="panneau-sources">Sites ▾</button>
+    <button class="bascule" id="b-sources" type="button" aria-expanded="false" aria-controls="panneau-sources">Sources ▾</button>
     <span class="masques" id="masques"></span>
     <button class="icone" id="b-loupe" aria-label="Rechercher" aria-expanded="false" title="Rechercher"><svg><use href="#i-loupe"/></svg></button>
     <div class="choix-themes panneau-sources cache" id="panneau-sources" role="group" aria-label="Sites affichés"></div>
@@ -2159,7 +2162,7 @@ function siteArticle(a) {
 function sourcesMasqueesActives() { return etat.choixSources || new Set(etat.prefs.sources_masquees || []); }
 function majBoutonSources() {
   const n = sourcesMasqueesActives().size, b = $("b-sources");
-  b.textContent = `Sites${n ? ` · ${n} masqué${n > 1 ? "s" : ""}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
+  b.textContent = `Sources${n ? ` · ${n} site${n > 1 ? "s" : ""} masqué${n > 1 ? "s" : ""}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
   b.setAttribute("aria-expanded", String(etat.sourcesOuvertes));
   b.classList.toggle("filtre-actif", n > 0);
 }
