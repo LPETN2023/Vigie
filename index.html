@@ -311,6 +311,14 @@
   /* ---------- Limite de thèmes et demandes ---------- */
   .quota .note { margin: 4px 0; }
   .liste-admin .motif { margin: 4px 0; font-style: italic; overflow-wrap: anywhere; }
+  .form-source { display: grid; gap: 8px; margin: 8px 0; }
+  .form-source .ligne-sel { display: flex; gap: 8px; flex-wrap: wrap; }
+  .form-source select { flex: 1; min-width: 10em; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--filet); background: var(--surface); color: var(--texte); font: inherit; }
+  .form-source .btn { justify-self: start; }
+  .liste-admin a { overflow-wrap: anywhere; }
+  .liste-admin li.fait { opacity: .75; }
+  .lancer { margin: 10px 0 14px; }
+  .lancer .note { margin: 4px 0 0; }
   .themes-demande { margin: 4px 0 8px; padding-left: 18px; font-size: .88rem; }
   .themes-demande li { border: 0; padding: 3px 0; }
   .pastilles .limite { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; }
@@ -755,8 +763,31 @@
     <div class="msg" id="demandes-msg" role="alert"></div>
     <ul class="liste-admin" id="admin-demandes"></ul>
     </details>
+    <details class="section" id="sec-suggestions"><summary><span class="ic" aria-hidden="true">📥</span><span class="txt"><span class="titre-sec">Sources : propositions et ajout <span id="nb-suggestions"></span></span><small>Propositions des lecteurs, ajouter une source</small></span></summary>
+    <p class="note">Une source acceptée ou ajoutée est collectée dès la nuit suivante (ou dès une édition lancée à la main), puis inscrite au registre lors de la révision suivante. Indiquez l'adresse du <b>flux RSS</b> (souvent /feed, /rss ou /rss.xml) : une page web ordinaire ne peut pas être lue.</p>
+    <h4>Propositions des lecteurs</h4>
+    <div class="msg" id="suggestions-msg" role="alert"></div>
+    <ul class="liste-admin" id="admin-suggestions"></ul>
+    <h4>Ajouter une source</h4>
+    <form class="form-source" id="form-ajout-source" autocomplete="off">
+      <input id="aj-nom" maxlength="120" placeholder="Nom de la source" aria-label="Nom de la source" required>
+      <input id="aj-url" type="url" maxlength="2000" placeholder="Adresse du flux RSS (https://…)" aria-label="Adresse du flux RSS" required>
+      <div class="ligne-sel"><select id="aj-dossier" aria-label="Dossier"></select><select id="aj-langue" aria-label="Langue"></select></div>
+      <input id="aj-raison" maxlength="300" placeholder="Note (facultatif)" aria-label="Note (facultatif)">
+      <button class="btn principal" type="submit">Ajouter la source</button>
+    </form>
+    <div class="msg" id="ajout-msg" role="alert"></div>
+    </details>
+    <details class="section" id="sec-lancer"><summary><span class="ic" aria-hidden="true">🔄</span><span class="txt"><span class="titre-sec">Actualisation manuelle</span><small>Lancer une édition ou une révision des sources</small></span></summary>
+    <p class="note">Ces traitements sont normalement automatiques. Ils tournent sur GitHub, l'un après l'autre : un lancement est refusé pendant une édition en cours, et deux lancements du même type doivent être espacés de 10 minutes.</p>
+    <div class="lancer"><button type="button" class="btn principal" data-lancer="edition">📰 Lancer une édition maintenant</button>
+      <p class="note">Collecte des nouveaux articles, résumés et synthèse du jour (20 à 50 minutes). Les nouveaux articles s'ajoutent à l'édition du jour.</p></div>
+    <div class="lancer"><button type="button" class="btn" data-lancer="revue">🗂 Lancer une révision des sources</button>
+      <p class="note">Vérifie les flux et propose des ajouts ou retraits de sources, que vous validez ensuite (10 à 30 minutes).</p></div>
+    <div class="msg" id="lancer-msg" role="status"></div>
+    </details>
     <details class="section" id="sec-notifs"><summary><span class="ic" aria-hidden="true">🔔</span><span class="txt"><span class="titre-sec">Notifications</span><small>Alertes sur cet appareil</small></span></summary>
-    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou que la révision propose d'ajouter ou de retirer une source.</p>
+    <p class="note">Recevez une notification sur cet appareil quand un compte attend votre validation, qu'un lecteur demande plus de thèmes ou propose une source, ou que la révision propose d'ajouter ou de retirer une source.</p>
     <p class="note" id="notifs-etat"></p>
     <div class="pastilles">
       <button type="button" id="btn-notifs">Activer sur cet appareil</button>
@@ -777,7 +808,7 @@
   </div>
   <div id="vue-reglages">
   <div class="alertes-admin cache" id="alertes-admin" role="status"></div>
-  <button class="ligne-menu cache" type="button" id="btn-admin"><span class="ic" aria-hidden="true">🛡️</span><span class="txt"><span class="titre-sec">Administration</span><small>Comptes, demandes, thèmes, notifications</small></span></button>
+  <button class="ligne-menu cache" type="button" id="btn-admin"><span class="ic" aria-hidden="true">🛡️</span><span class="txt"><span class="titre-sec">Administration</span><small>Comptes, demandes, sources, thèmes, actualisation</small></span></button>
   <details class="section"><summary><span class="ic" aria-hidden="true">🗂️</span><span class="txt"><span class="titre-sec">Thèmes principaux</span><small>Choisir les thèmes affichés</small></span></summary>
   <p class="note">Décochez un thème pour masquer ses articles sur votre compte, sauf ceux qui concernent vos thèmes personnels. « Autre » reste toujours affiché.</p>
   <div class="liste-principaux" id="liste-principaux"></div>
@@ -808,6 +839,18 @@
   <p class="note" id="resume-sources"></p>
   <input type="search" id="filtre-sources" placeholder="Filtrer les sites et catégories" aria-label="Filtrer les sites et catégories" autocomplete="off">
   <div class="liste-zone liste-sources" id="liste-sources"></div>
+  </details>
+<details class="section" id="sec-suggerer"><summary><span class="ic" aria-hidden="true">➕</span><span class="txt"><span class="titre-sec">Proposer une source</span><small>Suggérer un site à l'administrateur</small></span></summary>
+  <p class="note">Un site ou un flux RSS manque à la veille ? Proposez-le : l'administrateur l'examinera et vous verrez sa réponse ici. Trois propositions en attente au plus.</p>
+  <form class="form-source" id="form-suggestion" autocomplete="off">
+    <input id="sug-nom" maxlength="120" placeholder="Nom du site (ex. : Le Journal du Hacker)" aria-label="Nom du site" required>
+    <input id="sug-url" type="url" maxlength="2000" placeholder="Adresse du site ou de son flux RSS (https://…)" aria-label="Adresse du site ou de son flux RSS" required>
+    <textarea id="sug-motif" rows="2" maxlength="500" placeholder="Pourquoi cette source ? (facultatif)" aria-label="Motif (facultatif)"></textarea>
+    <button class="btn principal" type="submit">Envoyer la proposition</button>
+  </form>
+  <div class="msg" id="msg-suggestion" role="alert"></div>
+  <h4>Vos propositions</h4>
+  <ul class="liste-admin" id="mes-suggestions"></ul>
   </details>
   <details class="section"><summary><span class="ic" aria-hidden="true">👤</span><span class="txt"><span class="titre-sec">Mon compte</span><small>Mot de passe, application, présentation</small></span></summary>
   <p class="note" id="mon-email"></p>
@@ -1199,7 +1242,9 @@ async function demarrer(session) {
     etat.gardes = new Set(); etat.articlesGardes = []; etat.gardesSeuls = false;
     etat.etiquettes = new Map(); etat.choixThemes = null; etat.brouillon = null; etat.themesOuverts = false; etat.persoSeul = false;
     etat.choixSources = null; etat.brouillonSources = null; etat.sourcesOuvertes = false;
-    etat.demandes = null; etat.limiteDefaut = null;
+    etat.demandes = null; etat.limiteDefaut = null; etat.sugSources = null;
+    for (const id of ["sug-nom", "sug-url", "sug-motif", "aj-nom", "aj-url", "aj-raison"]) $(id).value = "";
+    $("mes-suggestions").innerHTML = ""; $("admin-suggestions").innerHTML = "";
     if (dialogueEnCours) dialogueEnCours(null);
     etat.vue = "accueil"; majVue(); history.replaceState(null, "");
     afficher("connexion"); return;
@@ -2959,6 +3004,7 @@ function ouvrirReglages() {
   $("suggestions").innerHTML = '<p class="note">Chargement…</p>';
   rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions(); chargerQuota();
   $("filtre-sources").value = ""; $("liste-sources").innerHTML = ""; rendreSourcesReglages();
+  $("msg-suggestion").textContent = ""; chargerMesSuggestions();
   afficherVueAdmin(false);
   $("btn-admin").classList.toggle("cache", !etat.admin);
   rendreAlertesAdmin(); majAlertesAdmin(); fermerSections("#vue-reglages");
@@ -2986,7 +3032,8 @@ function afficherVueAdmin(oui) {
 $("btn-admin").onclick = () => {
   afficherVueAdmin(true); fermerSections("#vue-admin");
   $("admin-filtre").value = ""; $("comptes-filtre").value = ""; $("admin-msg").textContent = "";
-  chargerAdmin(); chargerComptes(); chargerDemandes(); majEtatNotifs();
+  chargerAdmin(); chargerComptes(); chargerDemandes(); chargerSuggestionsAdmin(); majEtatNotifs();
+  $("lancer-msg").textContent = ""; $("ajout-msg").textContent = ""; $("suggestions-msg").textContent = "";
 };
 // Sections : une section ouverte s'affiche seule, comme une nouvelle page (l'événement toggle ne remonte pas : capture).
 // L'ouverture ajoute une entrée d'historique : le bouton retour du téléphone ramène au menu.
@@ -3032,12 +3079,13 @@ async function majAlertesAdmin() {
     const { data, error } = await sb.rpc("admin_en_attente");
     if (moi !== numeroAlertes || uid !== sessionCourante || error) return;
     const l = Array.isArray(data) ? data[0] : data;
-    etat.alertes = { comptes: Number(l?.comptes) || 0, propositions: Number(l?.propositions) || 0, demandes: Number(l?.demandes) || 0 };
+    etat.alertes = { comptes: Number(l?.comptes) || 0, propositions: Number(l?.propositions) || 0, demandes: Number(l?.demandes) || 0,
+      suggestions: Number(l?.suggestions) || 0 };
     rendreAlertesAdmin();
   } catch (e) { /* hors ligne : on garde l'état connu */ }
 }
 function rendreAlertesAdmin() {
-  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions + (a.demandes || 0) : 0;
+  const a = etat.admin ? etat.alertes : null, n = a ? a.comptes + a.propositions + (a.demandes || 0) + (a.suggestions || 0) : 0;
   $("btn-reglages").classList.toggle("alerte", n > 0);
   $("btn-reglages").setAttribute("aria-label", n ? `Paramètres (${n} élément${n > 1 ? "s" : ""} en attente)` : "Paramètres");
   const bloc = $("alertes-admin");
@@ -3045,12 +3093,14 @@ function rendreAlertesAdmin() {
   if (!n) { bloc.innerHTML = ""; return; }
   bloc.innerHTML = (a.comptes ? `<button type="button" data-alerte="comptes">${a.comptes} compte${a.comptes > 1 ? "s" : ""} à valider ›</button>` : "")
     + (a.demandes ? `<button type="button" data-alerte="demandes">${a.demandes} demande${a.demandes > 1 ? "s" : ""} de thèmes à traiter ›</button>` : "")
+    + (a.suggestions ? `<button type="button" data-alerte="suggestions">${a.suggestions} source${a.suggestions > 1 ? "s" : ""} proposée${a.suggestions > 1 ? "s" : ""} par les lecteurs ›</button>` : "")
     + (a.propositions ? `<button type="button" data-alerte="sources">${a.propositions} proposition${a.propositions > 1 ? "s" : ""} de source${a.propositions > 1 ? "s" : ""} à décider ›</button>` : "");
 }
 $("alertes-admin").addEventListener("click", (e) => {
   const b = e.target.closest("[data-alerte]"); if (!b) return;
   if (b.dataset.alerte === "comptes") { $("btn-admin").click(); $("sec-comptes").open = true; return; }
   if (b.dataset.alerte === "demandes") { $("btn-admin").click(); $("sec-demandes").open = true; return; }
+  if (b.dataset.alerte === "suggestions") { $("btn-admin").click(); $("sec-suggestions").open = true; return; }
   // Les propositions de sources (ajouts, retraits) sont sur l'accueil : on ferme les Paramètres et on y descend
   fermerReglages();
   setTimeout(() => {
@@ -3129,6 +3179,7 @@ function traiterOuverture() {
   const o = ouvrirDemande; ouvrirDemande = null;
   if (o === "comptes") { ouvrirReglages(); $("btn-admin").click(); $("sec-comptes").open = true; }
   else if (o === "demandes") { ouvrirReglages(); $("btn-admin").click(); $("sec-demandes").open = true; }
+  else if (o === "suggestions") { ouvrirReglages(); $("btn-admin").click(); $("sec-suggestions").open = true; }
   else if (o === "sources" && !$("propositions").classList.contains("cache")) {
     setTimeout(() => $("propositions").scrollIntoView({ behavior: "smooth", block: "start" }), 300);
   }
@@ -3226,6 +3277,176 @@ $("admin-comptes").addEventListener("click", async (e) => {
     valider ? "Compte autorisé." : c.statut === "valide" ? "Accès retiré." : "Compte refusé.");
 });
 $("admin-retour").onclick = () => afficherVueAdmin(false);
+
+/* ---------- Propositions de sources (lecteur) ---------- */
+const DOSSIERS_SOURCES = ["⭐ Prioritaire", "🎯 Thèmes", "📚 Culture cyber", "⚖️ Culture juridique", "🌍 International (à traduire)"];
+const LANGUES_SOURCES = [["fr", "Français"], ["en", "Anglais (traduit)"]];
+const optionsDossiers = (sel = "📚 Culture cyber") => DOSSIERS_SOURCES.map((d) => `<option value="${echapper(d)}"${d === sel ? " selected" : ""}>${echapper(d)}</option>`).join("");
+const optionsLangues = (sel = "fr") => LANGUES_SOURCES.map(([v, t]) => `<option value="${v}"${v === sel ? " selected" : ""}>${t}</option>`).join("");
+const dateSug = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "";
+const domaineSug = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } };
+$("aj-dossier").innerHTML = optionsDossiers(); $("aj-langue").innerHTML = optionsLangues();
+let numeroMesSuggestions = 0;
+async function chargerMesSuggestions() {
+  const moi = ++numeroMesSuggestions, uid = sessionCourante, ul = $("mes-suggestions");
+  ul.innerHTML = '<li class="note">Chargement…</li>';
+  let r;
+  try { r = await sb.from("suggestions_sources").select("id,nom,url,statut,reponse,cree_le,decide_le").neq("statut", "annulee").order("cree_le", { ascending: false }).limit(20); }
+  catch (e) { r = { error: true }; }
+  if (moi !== numeroMesSuggestions || uid !== sessionCourante) return;
+  if (r.error) { ul.innerHTML = '<li class="note">Vos propositions sont indisponibles pour le moment.</li>'; return; }
+  const ETAT = { attente: ["En attente", " alerte"], acceptee: ["Acceptée", ""], refusee: ["Non retenue", ""] };
+  const l = r.data ?? [];
+  ul.innerHTML = l.length ? l.map((x) => {
+    const [lib, cls] = ETAT[x.statut] || [x.statut, ""];
+    return `<li><div class="tete">${echapper(x.nom)} <span class="etiquette${cls}">${echapper(lib)}</span></div>
+      <p class="note">${echapper(domaineSug(x.url))} · proposée le ${dateSug(x.cree_le)}${x.decide_le ? ` · réponse le ${dateSug(x.decide_le)}` : ""}</p>
+      ${x.statut === "acceptee" ? '<p class="note">Ajoutée à la veille : ses articles arrivent avec les prochaines éditions.</p>' : ""}
+      ${x.reponse ? `<p class="motif">« ${echapper(x.reponse)} »</p>` : ""}
+      ${x.statut === "attente" ? `<span class="pastilles"><button type="button" data-annuler-sug="${Number(x.id)}">Retirer ma proposition</button></span>` : ""}</li>`;
+  }).join("") : '<li class="note">Aucune proposition pour le moment.</li>';
+}
+$("form-suggestion").onsubmit = async (e) => {
+  e.preventDefault();
+  const b = e.submitter, uid = sessionCourante;
+  if (b) b.disabled = true;
+  $("msg-suggestion").textContent = "";
+  try {
+    const { error } = await sb.rpc("suggerer_source", { p_nom: $("sug-nom").value, p_url: $("sug-url").value.trim(), p_motif: $("sug-motif").value });
+    if (uid !== sessionCourante) return;
+    if (error) { $("msg-suggestion").textContent = erreurRpc(error); return; }
+    $("sug-nom").value = ""; $("sug-url").value = ""; $("sug-motif").value = "";
+    toast("Proposition envoyée à l'administrateur.");
+    chargerMesSuggestions();
+  } catch (err) { $("msg-suggestion").textContent = "Envoi impossible (connexion ?)"; }
+  finally { if (b) b.disabled = false; }
+};
+$("mes-suggestions").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-annuler-sug]"); if (!b || b.disabled) return;
+  if (!await confirmer("Retirer cette proposition ?", "L'administrateur ne la verra plus.", "Retirer")) return;
+  b.disabled = true;
+  try {
+    const { error } = await sb.rpc("annuler_suggestion", { p_id: Number(b.dataset.annulerSug) });
+    if (error) toast(erreurRpc(error)); else toast("Proposition retirée.");
+  } catch (err) { toast("Action impossible (connexion ?)"); }
+  chargerMesSuggestions();
+});
+
+/* ---------- Administration : propositions des lecteurs et ajout de sources ---------- */
+let numeroSugAdmin = 0, suggestionsOccupe = false;
+async function chargerSuggestionsAdmin() {
+  const moi = ++numeroSugAdmin, uid = sessionCourante;
+  $("admin-suggestions").innerHTML = '<li class="note">Chargement…</li>';
+  let r;
+  try { r = await sb.rpc("admin_suggestions"); } catch (e) { r = { error: { message: "connexion ?" } }; }
+  if (moi !== numeroSugAdmin || uid !== sessionCourante) return;
+  if (r.error) { etat.sugSources = null; $("nb-suggestions").textContent = ""; $("admin-suggestions").innerHTML = `<li class="note">Indisponible : ${echapper(r.error.message)}</li>`; return; }
+  etat.sugSources = (r.data ?? []).filter((x) => x && x.id != null).map((x) => ({ ...x, id: Number(x.id) }));
+  const n = etat.sugSources.filter((x) => x.statut === "attente").length;
+  $("nb-suggestions").textContent = n ? `· ${n}` : "";
+  rendreSuggestionsAdmin();
+}
+function rendreSuggestionsAdmin() {
+  const l = etat.sugSources || [], att = l.filter((x) => x.statut === "attente"), faits = l.filter((x) => x.statut !== "attente");
+  $("admin-suggestions").innerHTML = (att.length ? att.map((x) => `<li data-sug="${x.id}"><div class="tete">${echapper(x.nom)} <span class="etiquette alerte">en attente</span></div>
+      <p class="note">Proposée par ${echapper(x.email || "un lecteur")} le ${dateSug(x.cree_le)}</p>
+      <p class="note"><a href="${echapper(urlSure(x.url))}" target="_blank" rel="noopener noreferrer">${echapper(x.url)}</a></p>
+      ${x.motif ? `<p class="motif">« ${echapper(x.motif)} »</p>` : ""}
+      <div class="form-source">
+        <input data-champ="nom" maxlength="120" value="${echapper(x.nom)}" aria-label="Nom de la source">
+        <input data-champ="url" type="url" maxlength="2000" value="${echapper(x.url)}" aria-label="Adresse du flux RSS">
+        <div class="ligne-sel"><select data-champ="dossier" aria-label="Dossier">${optionsDossiers()}</select><select data-champ="langue" aria-label="Langue">${optionsLangues()}</select></div>
+      </div>
+      <div class="pastilles"><button type="button" data-decider-sug="1">Accepter</button><button type="button" class="danger" data-decider-sug="0">Refuser</button></div></li>`).join("")
+    : '<li class="note">Aucune proposition en attente.</li>')
+    + faits.map((x) => `<li class="fait"><div class="tete">${echapper(x.nom)} <span class="etiquette">${x.statut === "acceptee" ? "acceptée" : "refusée"}</span></div>
+      <p class="note">${echapper(x.email || "un lecteur")} · décision le ${dateSug(x.decide_le)}</p></li>`).join("");
+}
+$("admin-suggestions").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-decider-sug]"); if (!b || suggestionsOccupe) return;
+  const li = b.closest("[data-sug]"), x = etat.sugSources?.find((y) => y.id === Number(li?.dataset.sug)); if (!x) return;
+  const accepter = b.dataset.deciderSug === "1", champ = (c) => li.querySelector(`[data-champ="${c}"]`)?.value ?? "";
+  const params = { p_id: x.id, p_accepter: accepter, p_reponse: null, p_nom: null, p_url: null, p_dossier: null, p_langue: null };
+  if (accepter) Object.assign(params, { p_nom: champ("nom").trim() || null, p_url: champ("url").trim() || null, p_dossier: champ("dossier"), p_langue: champ("langue") });
+  const rep = await dialogue({ titre: accepter ? "Accepter cette source ?" : "Refuser cette proposition ?",
+    texte: (accepter ? "Elle sera collectée dès la prochaine édition. " : "") + "Message facultatif pour le lecteur (300 caractères au maximum).",
+    saisie: "", ok: accepter ? "Accepter" : "Refuser", danger: !accepter, max: 300 });
+  if (typeof rep !== "string") return;
+  params.p_reponse = rep.trim() || null;
+  suggestionsOccupe = true;
+  $("suggestions-msg").textContent = "";
+  const uid = sessionCourante, champs = [...$("admin-suggestions").querySelectorAll("button, input, select")];
+  for (const y of champs) y.disabled = true;
+  let ok = false;
+  try {
+    const { error } = await sb.rpc("admin_decider_suggestion", params);
+    if (uid !== sessionCourante) return;
+    if (error) $("suggestions-msg").textContent = erreurRpc(error);
+    else { ok = true; toast(accepter ? "Source acceptée : collectée dès la prochaine édition." : "Proposition refusée."); if (accepter) etat.rechargerApres = true; }
+  } catch (err) { $("suggestions-msg").textContent = "Action impossible (connexion ?)"; }
+  finally {
+    suggestionsOccupe = false;
+    if (uid === sessionCourante) {
+      if (ok) { await chargerSuggestionsAdmin(); majAlertesAdmin(); }
+      else for (const y of champs) y.disabled = false; // les corrections saisies restent
+    }
+  }
+});
+$("form-ajout-source").onsubmit = async (e) => {
+  e.preventDefault();
+  const b = e.submitter, uid = sessionCourante;
+  if (b) b.disabled = true;
+  $("ajout-msg").textContent = "";
+  try {
+    const { error } = await sb.rpc("admin_ajouter_source", { p_nom: $("aj-nom").value.trim(), p_url: $("aj-url").value.trim(),
+      p_dossier: $("aj-dossier").value, p_langue: $("aj-langue").value, p_raison: $("aj-raison").value.trim() || null });
+    if (uid !== sessionCourante) return;
+    if (error) { $("ajout-msg").textContent = erreurRpc(error); return; }
+    $("aj-nom").value = ""; $("aj-url").value = ""; $("aj-raison").value = "";
+    etat.rechargerApres = true;
+    toast("Source ajoutée : collectée dès la prochaine édition.");
+  } catch (err) { $("ajout-msg").textContent = "Ajout impossible (connexion ?)"; }
+  finally { if (b) b.disabled = false; }
+};
+
+/* ---------- Administration : lancement manuel d'une édition ou d'une révision ---------- */
+const LANCEMENTS = {
+  edition: { titre: "Lancer une édition maintenant ?", ok: "Lancer l'édition",
+    texte: "La collecte des nouveaux articles, leurs résumés et la synthèse du jour vont tourner sur GitHub (20 à 50 minutes). Les nouveaux articles s'ajoutent à l'édition du jour.",
+    fait: "Édition lancée : les nouveaux articles apparaîtront d'ici 20 à 50 minutes." },
+  revue: { titre: "Lancer une révision des sources ?", ok: "Lancer la révision",
+    texte: "Les flux vont être vérifiés et des ajouts ou retraits de sources proposés (10 à 30 minutes). Rien n'est appliqué sans votre accord.",
+    fait: "Révision lancée : ses propositions apparaîtront sur l'accueil d'ici 10 à 30 minutes." }
+};
+let lancementEnCours = false;
+$("sec-lancer").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-lancer]"); if (!b || lancementEnCours) return;
+  const quoi = b.dataset.lancer, L = LANCEMENTS[quoi]; if (!L) return;
+  if (!await confirmer(L.titre, L.texte, L.ok)) return;
+  lancementEnCours = true;
+  const uid = sessionCourante, boutons = [...$("sec-lancer").querySelectorAll("[data-lancer]")], msg = $("lancer-msg");
+  for (const x of boutons) x.disabled = true;
+  msg.textContent = "Envoi de la demande à GitHub…";
+  try {
+    const { data, error } = await sb.rpc("admin_lancer", { p_quoi: quoi });
+    if (uid !== sessionCourante) return;
+    if (error) { msg.textContent = erreurRpc(error); return; }
+    // Réponse de GitHub (204 attendu), relue quelques secondes
+    const req = Number(data?.req);
+    let rep = null;
+    for (let i = 0; i < 8 && Number.isFinite(req) && !rep; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const r = await sb.rpc("admin_lancement_etat", { p_req: req }).then((x) => x, () => ({ error: true }));
+      if (!r.error && r.data?.fini) rep = r.data;
+    }
+    if (uid !== sessionCourante) return;
+    msg.textContent = !rep ? "Demande envoyée ; la confirmation de GitHub n'est pas encore arrivée. Vérifiez l'état de l'édition dans quelques minutes."
+      : rep.code >= 200 && rep.code < 300 ? L.fait
+      : rep.code === 401 || rep.code === 403 ? "GitHub a refusé le lancement : le jeton GitHub a probablement expiré. Vous pourrez relancer une fois le jeton renouvelé."
+      : `Le lancement a échoué (${rep.code ? "code " + rep.code : "GitHub injoignable"}). Vous pouvez réessayer.`;
+  } catch (err) { msg.textContent = "Lancement impossible (connexion ?)"; }
+  finally { lancementEnCours = false; for (const x of boutons) x.disabled = false; }
+});
 
 /* ---------- Administration : demandes de thèmes supplémentaires ---------- */
 let numeroDemandes = 0, demandesOccupe = false;
