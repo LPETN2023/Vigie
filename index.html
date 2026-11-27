@@ -148,6 +148,15 @@
   .panneau-sources input[type="search"] { margin: 4px 0 6px; }
   .panneau-sources button { border: 1px solid var(--filet); border-radius: 999px; padding: 6px 12px; background: var(--surface); color: var(--texte); font-size: .85rem; }
   .panneau-sources button.principal { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .panneau-sources .groupes-sources { max-height: 50vh; overflow-y: auto; }
+  .panneau-sources .groupes-sources .cases { max-height: none; overflow: visible; padding-left: 26px; }
+  .panneau-sources .groupe-sources { margin: 4px 0 6px; }
+  .panneau-sources .cat-sources { border-bottom: 1px solid var(--filet); }
+  .liste-sources { max-height: none; }
+  .liste-sources .sites-cat > summary { cursor: pointer; font-size: .8rem; color: var(--accent); padding: 0 0 6px 26px; }
+  .liste-sources .coupee .deps { opacity: .55; }
+  .liste-sources .site-src { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .liste-sources .site-src select { font-size: .75rem; max-width: 12em; padding: 2px 4px; }
   .outils .recherche { flex: 1 0 100%; }
   .outils .recherche { position: relative; }
   .outils .recherche input { padding: 8px 48px 8px 12px; }
@@ -794,6 +803,12 @@
   <input type="search" id="filtre-zone" placeholder="Filtrer les régions et départements" aria-label="Filtrer les régions et départements" autocomplete="off">
   <div class="liste-zone" id="liste-zone"></div>
   </details>
+  <details class="section" id="sec-sources"><summary><span class="ic" aria-hidden="true">📰</span><span class="txt"><span class="titre-sec">Mes sources</span><small>Catégories et sites affichés</small></span></summary>
+  <p class="note">Décochez une catégorie pour masquer tous ses sites, ou choisissez site par site. Ce réglage est enregistré sur votre compte ; les nouveaux sites sont classés chaque nuit.</p>
+  <p class="note" id="resume-sources"></p>
+  <input type="search" id="filtre-sources" placeholder="Filtrer les sites et catégories" aria-label="Filtrer les sites et catégories" autocomplete="off">
+  <div class="liste-zone liste-sources" id="liste-sources"></div>
+  </details>
   <details class="section"><summary><span class="ic" aria-hidden="true">👤</span><span class="txt"><span class="titre-sec">Mon compte</span><small>Mot de passe, application, présentation</small></span></summary>
   <p class="note" id="mon-email"></p>
   <div class="pastilles">
@@ -872,7 +887,8 @@ const $ = (id) => document.getElementById(id);
 const etat = {
   articles: [], votes: new Map(), synthese: null, jours: 1,
   vue: "accueil", liste: [], index: 0, ouvert: null, feuille: null,
-  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [], sources_masquees: [] },
+  prefs: { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [], sources_masquees: [], categories_masquees: [] },
+  sites: new Map(), // domaine → { nom, categorie } (table sites, classée chaque nuit)
   prefsChargees: false, recherche: "", mots: [], ouMots: false,zoneSeule: false, nbAutres: new Map(), masques: 0, reglages: false, prefsModif: false, selection: null,
   // Thèmes principaux du catalogue ({id, nom}) et ceux que le lecteur a décochés (ids) ; tous = articles avant masquage
   tous: [], principaux: [], principauxMasques: new Set(), principauxCharges: false, etapeBienvenue: 0,
@@ -1218,7 +1234,7 @@ async function demarrer(session) {
     if (!r.error && r.data === false) oublierAbonnementPush(); // appareil abonné par un administrateur, utilisé par un autre compte
   }, () => {});
   // Première connexion : pas de préférences, ou parcours non terminé (en cas d'erreur, on n'empêche pas la lecture)
-  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees,parcours_fini")
+  const pf = await sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees,categories_masquees,parcours_fini")
     .eq("user_id", uid).maybeSingle();
   if (sessionCourante !== uid) return;
   if (!pf.error && !pf.data?.parcours_fini) { await ouvrirBienvenue(uid, pf.data); return; }
@@ -1286,7 +1302,7 @@ async function charger() {
   const versionSuivisLancee = versionSuivis;
   // Les rattrapages (texte/images des anciens articles) ne sont pas des éditions : exclus des « Mis à jour » et de la santé
   const editions = (cols) => sb.from("executions").select(cols).or("message.is.null,message.not.like.Rattrapage*");
-  const [princ, arts, exe, syn, rev, props, exeOk, pr, gd] = await Promise.all([
+  const [princ, arts, exe, syn, rev, props, exeOk, pr, gd, st] = await Promise.all([
     chargerPrincipaux(sessionCourante),
     requete.order("edition", { ascending: false }).order("a_la_une", { ascending: false })
       .order("score", { ascending: false }).limit(LIMITE),
@@ -1295,8 +1311,9 @@ async function charger() {
     sb.from("revues").select("cree_le,resume,changements").order("cree_le", { ascending: false }).limit(1).maybeSingle(),
     sb.from("propositions").select("id,type,source,url,raison,decision,dossier,langue,themes,alertes,par_jour").eq("applique", false).order("cree_le").limit(30),
     editions("debut,fin,nb_articles,details").eq("statut", "ok").order("debut", { ascending: false }).limit(1),
-    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees").eq("user_id", sessionCourante).maybeSingle(),
-    sb.from("gardes").select("article_id").eq("user_id", sessionCourante).order("cree_le", { ascending: false }).limit(500)
+    sb.from("preferences").select("themes,zones,masquer_lus,masquer_rejetes,perso_masques,sources_masquees,categories_masquees").eq("user_id", sessionCourante).maybeSingle(),
+    sb.from("gardes").select("article_id").eq("user_id", sessionCourante).order("cree_le", { ascending: false }).limit(500),
+    chargerSites()
   ]);
   if (moi !== numeroRequete) return;
   if (arts.error) { $("grille").innerHTML = `<div class="chargement">Erreur : ${echapper(arts.error.message)}</div>`; return; }
@@ -1321,6 +1338,7 @@ async function charger() {
   }
   if (moi !== numeroRequete) return;
   if (!gd.error) etat.gardes = new Set((gd.data ?? []).map((g) => Number(g.article_id)));
+  if (st) etat.sites = st;
   if (versionSuivisLancee === versionSuivis) appliquerPrincipaux(princ);
   if (etiq) {
     // Articles liés hors période : leurs étiquettes aussi (un thème perso coché les garde visibles)
@@ -1426,7 +1444,7 @@ function afficherSante(ok) {
 
 /* ---------- Préférences ---------- */
 function appliquerPrefs(r) {
-  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [], sources_masquees: [] };
+  const p = { themes: [], zones: [], masquer_lus: false, masquer_rejetes: false, perso_masques: [], sources_masquees: [], categories_masquees: [] };
   if (r) {
     p.themes = (Array.isArray(r.themes) ? r.themes : []).filter((t) => t && typeof t.nom === "string" && t.nom.trim())
       .map((t) => ({ nom: t.nom.trim().slice(0, 60), categorie: !!t.categorie }));
@@ -1435,6 +1453,7 @@ function appliquerPrefs(r) {
     p.masquer_lus = !!r.masquer_lus; p.masquer_rejetes = !!r.masquer_rejetes;
     p.perso_masques = (Array.isArray(r.perso_masques) ? r.perso_masques : []).map(Number).filter(Number.isInteger);
     p.sources_masquees = (Array.isArray(r.sources_masquees) ? r.sources_masquees : []).filter((x) => typeof x === "string");
+    p.categories_masquees = (Array.isArray(r.categories_masquees) ? r.categories_masquees : []).filter((x) => CATEGORIES_SITES.some((c) => c.cle === x));
   }
   etat.prefs = p;
   recalcZone();
@@ -2196,7 +2215,19 @@ function apresVote(id) {
 
 /* ---------- Masquage et recherche ---------- */
 /* ---------- Choix des sites affichés ---------- */
-// Un flux (ex. « Google Actualités – Rançongiciels ») regroupe des articles de nombreux sites : on filtre par site.
+// Un flux (ex. « Google Actualités – Rançongiciels ») regroupe des articles de nombreux sites : on filtre par site,
+// rangé par catégorie (table sites). Le réglage durable est dans Paramètres › Mes sources ; le menu « Sources ▾ » ne fait qu'« Afficher ».
+const CATEGORIES_SITES = [
+  { cle: "officiel", ic: "🏛️", nom: "Sources officielles" },
+  { cle: "presse_nationale", ic: "📰", nom: "Presse nationale, radio et télé" },
+  { cle: "presse_regionale", ic: "🗞️", nom: "Presse régionale" },
+  { cle: "specialisee", ic: "💻", nom: "Presse spécialisée cyber et tech" },
+  { cle: "juridique", ic: "⚖️", nom: "Presse juridique" },
+  { cle: "etrangere", ic: "🌍", nom: "Médias étrangers" },
+  { cle: "blog", ic: "✍️", nom: "Blogs et analyses d'experts" },
+  { cle: "autre", ic: "❓", nom: "Autres sites" },
+  { cle: "nonclasse", ic: "⏳", nom: "Pas encore classés" }
+];
 const memoSite = new WeakMap();
 function siteArticle(a) {
   let x = memoSite.get(a);
@@ -2210,13 +2241,49 @@ function siteArticle(a) {
   }
   return x;
 }
-// Cochée = affichée. Le brouillon contient les sources masquées ; « Afficher » vaut jusqu'à la fermeture, « Enregistrer » le garde sur le compte.
-function sourcesMasqueesActives() { return etat.choixSources || new Set(etat.prefs.sources_masquees || []); }
+const CLES_CATEGORIES = new Set(CATEGORIES_SITES.map((c) => c.cle));
+// Table des sites, par pages de 1000 ; null en cas d'erreur (on garde alors la table déjà chargée)
+async function chargerSites() {
+  const m = new Map();
+  for (let debut = 0; debut < 20000; debut += 1000) {
+    const { data, error } = await sb.from("sites").select("domaine,nom,categorie").order("domaine").range(debut, debut + 999);
+    if (error) return null;
+    for (const x of data ?? []) m.set(x.domaine, { nom: x.nom, categorie: x.categorie });
+    if (!data || data.length < 1000) break;
+  }
+  return m;
+}
+const categorieSite = (cle) => { const c = etat.sites.get(cle)?.categorie; return CLES_CATEGORIES.has(c) ? c : "nonclasse"; };
+// État des sources : réglage enregistré (sites et catégories masqués), corrigé par un éventuel choix temporaire (« Afficher »),
+// qui ne retient que l'écart : sites masqués en plus, sites réaffichés malgré le réglage.
+function etatSources() {
+  return { temp: etat.choixSources, sites: new Set(etat.prefs.sources_masquees || []), cats: new Set(etat.prefs.categories_masquees || []) };
+}
+function siteMasque(cle, s = etatSources()) {
+  if (s.temp?.masques.has(cle)) return true;
+  if (s.temp?.affiches.has(cle)) return false;
+  return s.sites.has(cle) || s.cats.has(categorieSite(cle));
+}
+// Sites de la période : clé → { articles, noms }
+function sitesPeriode() {
+  const parSite = new Map();
+  for (const a of etat.tous || []) {
+    const x = siteArticle(a);
+    if (!parSite.has(x.cle)) parSite.set(x.cle, { articles: [], noms: new Map() });
+    const g = parSite.get(x.cle);
+    g.articles.push(a); g.noms.set(x.nom, (g.noms.get(x.nom) || 0) + 1);
+  }
+  return parSite;
+}
 function majBoutonSources() {
-  const n = sourcesMasqueesActives().size, b = $("b-sources");
+  const s = etatSources(), b = $("b-sources");
+  let n = 0;
+  for (const cle of sitesPeriode().keys()) if (siteMasque(cle, s)) n++;
+  const regle = !!s.temp || s.sites.size > 0 || s.cats.size > 0;
   // Libellé court (le détail est dans l'infobulle et pour les lecteurs d'écran)
   b.textContent = `Sources${n ? ` −${n}` : ""} ${etat.sourcesOuvertes ? "▴" : "▾"}`;
-  const detail = n ? `Sources : ${n} site${n > 1 ? "s" : ""} masqué${n > 1 ? "s" : ""}` : "Choisir les sources affichées";
+  const detail = n ? `Sources : ${n} site${n > 1 ? "s" : ""} masqué${n > 1 ? "s" : ""} sur la période`
+    : regle ? "Sources : réglage actif, aucun site masqué sur la période" : "Choisir les sources affichées";
   b.title = detail; b.setAttribute("aria-label", detail);
   b.setAttribute("aria-expanded", String(etat.sourcesOuvertes));
   b.classList.toggle("filtre-actif", n > 0);
@@ -2226,31 +2293,38 @@ function fermerPanneauSources() {
   $("panneau-sources").classList.add("cache"); $("panneau-sources").innerHTML = "";
   majBoutonSources();
 }
-function rendrePanneauSources() {
-  const br = etat.brouillonSources || (etat.brouillonSources = new Set(sourcesMasqueesActives()));
-  // Sites des articles de la période, plus ceux déjà masqués (pour pouvoir les réafficher)
-  const parSite = new Map();
-  for (const a of etat.tous) {
-    const x = siteArticle(a);
-    if (!parSite.has(x.cle)) parSite.set(x.cle, { articles: [], noms: new Map() });
-    const g = parSite.get(x.cle);
-    g.articles.push(a); g.noms.set(x.nom, (g.noms.get(x.nom) || 0) + 1);
+// Case de catégorie : cochée si tous ses sites sont affichés, à moitié si certains seulement
+function majCasesCategories() {
+  for (const g of $("panneau-sources").querySelectorAll("[data-groupe]")) {
+    const cases = [...g.querySelectorAll("[data-source]")], n = cases.filter((c) => c.checked).length;
+    const cat = g.querySelector("[data-cat-src]");
+    cat.checked = n === cases.length; cat.indeterminate = n > 0 && n < cases.length;
   }
-  for (const cle of sourcesMasqueesActives()) if (!parSite.has(cle)) parSite.set(cle, { articles: [], noms: new Map() });
-  const nomDe = (cle) => [...parSite.get(cle).noms].sort((x, y) => y[1] - x[1])[0]?.[0] || cle;
-  const cles = [...parSite.keys()].sort((x, y) => nomDe(x).localeCompare(nomDe(y), "fr"));
-  $("panneau-sources").innerHTML = `<p class="titre-choix">Sites de la période</p>
+}
+function rendrePanneauSources() {
+  const parSite = sitesPeriode(), s = etatSources();
+  const br = etat.brouillonSources || (etat.brouillonSources = new Set([...parSite.keys()].filter((c) => siteMasque(c, s))));
+  const nomDe = (cle) => etat.sites.get(cle)?.nom || [...parSite.get(cle).noms].sort((x, y) => y[1] - x[1])[0]?.[0] || cle;
+  const groupes = CATEGORIES_SITES.map((c) => ({ ...c, cles: [...parSite.keys()].filter((k) => categorieSite(k) === c.cle)
+    .sort((x, y) => nomDe(x).localeCompare(nomDe(y), "fr")) })).filter((g) => g.cles.length);
+  const memoNb = new Map();
+  const nbArticles = (cle) => { if (!memoNb.has(cle)) memoNb.set(cle, regrouper(parSite.get(cle).articles).liste.length); return memoNb.get(cle); };
+  $("panneau-sources").innerHTML = `<p class="titre-choix">Sites de la période, par catégorie</p>
     <input type="search" id="filtre-sites" placeholder="Filtrer les sites" aria-label="Filtrer les sites" autocomplete="off">
-    <div class="cases">${cles.length ? cles.map((cle) => {
-      const nom = nomDe(cle), arts = parSite.get(cle).articles;
-      return `<label class="coche" data-recherche="${echapper(normaliser(nom + " " + cle))}"><input type="checkbox" data-source="${echapper(cle)}"${br.has(cle) ? "" : " checked"}>
-        <span>${echapper(nom)}${normaliser(nom) !== normaliser(cle) ? ` <span class="nb">${echapper(cle)}</span>` : ""}</span>
-        <span class="nb">· ${arts.length ? regrouper(arts).liste.length : 0}</span></label>`;
-    }).join("") : '<p class="note">Aucun site pour cette période.</p>'}</div>
+    <div class="groupes-sources">${groupes.length ? groupes.map((g) => `<div class="groupe-sources" data-groupe="${g.cle}">
+      <label class="coche cat-sources"><input type="checkbox" data-cat-src="${g.cle}"><span><strong>${g.ic} ${echapper(g.nom)}</strong></span>
+        <span class="nb">· ${g.cles.reduce((t, k) => t + nbArticles(k), 0)}</span></label>
+      <div class="cases">${g.cles.map((cle) => {
+        const nom = nomDe(cle);
+        return `<label class="coche" data-recherche="${echapper(normaliser(nom + " " + cle + " " + g.nom))}"><input type="checkbox" data-source="${echapper(cle)}"${br.has(cle) ? "" : " checked"}>
+          <span>${echapper(nom)}${normaliser(nom) !== normaliser(cle) ? ` <span class="nb">${echapper(cle)}</span>` : ""}</span>
+          <span class="nb">· ${nbArticles(cle)}</span></label>`;
+      }).join("")}</div></div>`).join("") : '<p class="note">Aucun site pour cette période.</p>'}</div>
     <div class="actions-choix"><button type="button" data-src="tout">Tout cocher</button><button type="button" data-src="rien">Tout décocher</button></div>
-    <div class="actions-choix valider"><button type="button" data-src="afficher">Afficher</button>
-      <button type="button" data-src="enregistrer" class="principal">Enregistrer</button></div>
-    <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. « Enregistrer » garde ce choix sur votre compte. Les sites sans article sur la période n'apparaissent pas.</p>`;
+    <div class="actions-choix valider"><button type="button" data-src="afficher" class="principal">Afficher</button>
+      <button type="button" data-src="gerer">Gérer mes sources ›</button></div>
+    <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. Pour masquer durablement une catégorie ou des sites, touchez « Gérer mes sources ».</p>`;
+  majCasesCategories();
   $("panneau-sources").classList.remove("cache");
   majBoutonSources();
 }
@@ -2263,35 +2337,100 @@ $("panneau-sources").addEventListener("input", (e) => {
   if (e.target.id !== "filtre-sites") return;
   const q = normaliser(e.target.value);
   for (const l of $("panneau-sources").querySelectorAll("[data-recherche]")) l.classList.toggle("cache", !!q && !l.dataset.recherche.includes(q));
+  for (const g of $("panneau-sources").querySelectorAll("[data-groupe]")) g.classList.toggle("cache", !g.querySelector("[data-recherche]:not(.cache)"));
 });
 $("panneau-sources").addEventListener("change", (e) => {
-  const c = e.target.closest("[data-source]"), br = etat.brouillonSources; if (!c || !br) return;
-  if (c.checked) br.delete(c.dataset.source); else br.add(c.dataset.source);
+  const br = etat.brouillonSources; if (!br) return;
+  const c = e.target.closest("[data-source]");
+  if (c) { if (c.checked) br.delete(c.dataset.source); else br.add(c.dataset.source); majCasesCategories(); return; }
+  const cat = e.target.closest("[data-cat-src]"); if (!cat) return;
+  // Toute la catégorie (sites visibles après filtre)
+  for (const x of cat.closest("[data-groupe]").querySelectorAll("[data-source]")) {
+    if (x.closest(".cache")) continue;
+    x.checked = cat.checked;
+    if (cat.checked) br.delete(x.dataset.source); else br.add(x.dataset.source);
+  }
+  majCasesCategories();
 });
 $("panneau-sources").addEventListener("click", (e) => {
   const b = e.target.closest("[data-src]"), br = etat.brouillonSources; if (!b || !br) return;
   const cases = [...$("panneau-sources").querySelectorAll("[data-source]")];
   const tous = cases.map((x) => x.dataset.source);
   const act = b.dataset.src;
+  if (act === "gerer") { fermerPanneauSources(); ouvrirReglages(); if (etat.reglages) $("sec-sources").open = true; return; }
   if (act === "tout" || act === "rien") {
     // Seulement les sites visibles (après filtre) ; le filtre saisi est conservé
     for (const c of cases) if (!c.closest(".cache")) { c.checked = act === "tout"; if (act === "tout") br.delete(c.dataset.source); else br.add(c.dataset.source); }
+    majCasesCategories();
     return;
   }
   if (tous.length && tous.every((x) => br.has(x))) { toast("Cochez au moins un site."); return; }
-  const choix = new Set(br);
-  if (act === "enregistrer") {
-    etat.prefs.sources_masquees = [...choix];
-    sauverPrefs("sources_masquees");
-    etat.choixSources = null;
-    toast("Choix des sites enregistré.");
-  } else {
-    const enr = new Set(etat.prefs.sources_masquees || []);
-    etat.choixSources = choix.size === enr.size && [...choix].every((x) => enr.has(x)) ? null : choix;
-  }
+  // Écart au réglage enregistré (aucun écart : pas de choix temporaire)
+  const enr = { temp: null, sites: new Set(etat.prefs.sources_masquees || []), cats: new Set(etat.prefs.categories_masquees || []) };
+  const masques = new Set(tous.filter((cle) => br.has(cle) && !siteMasque(cle, enr)));
+  const affiches = new Set(tous.filter((cle) => !br.has(cle) && siteMasque(cle, enr)));
+  etat.choixSources = masques.size || affiches.size ? { masques, affiches } : null;
   fermerPanneauSources();
   etat.articles = sansMasques(etat.tous);
   if (etat.vue === "accueil") rendreAccueil(); else majListes(true);
+});
+
+/* ---------- Paramètres › Mes sources : catégories et sites masqués durablement ---------- */
+function rendreSourcesReglages() {
+  const zone = $("liste-sources"), q = normaliser($("filtre-sources").value);
+  const sm = new Set(etat.prefs.sources_masquees || []), cm = new Set(etat.prefs.categories_masquees || []);
+  const tous = new Map(etat.sites);
+  for (const d of sm) if (!tous.has(d)) tous.set(d, { nom: d, categorie: "nonclasse" });
+  for (const [d, g] of sitesPeriode()) if (!tous.has(d)) tous.set(d, { nom: [...g.noms].sort((x, y) => y[1] - x[1])[0]?.[0] || d, categorie: "nonclasse" });
+  const ouverts = new Set([...zone.querySelectorAll("details.sites-cat[open]")].map((d) => d.dataset.cat));
+  let html = "";
+  for (const c of CATEGORIES_SITES) {
+    const sites = [...tous].filter(([, x]) => (CLES_CATEGORIES.has(x.categorie) ? x.categorie : "nonclasse") === c.cle).sort((a, b) => a[1].nom.localeCompare(b[1].nom, "fr"));
+    if (!sites.length) continue;
+    const cOk = !q || normaliser(c.nom).includes(q);
+    const vis = sites.filter(([d, x]) => cOk || normaliser(x.nom + " " + d).includes(q));
+    if (!vis.length) continue;
+    const off = cm.has(c.cle), nbMasq = sites.filter(([d]) => sm.has(d)).length;
+    const etatCat = off ? "catégorie masquée" : nbMasq ? `${nbMasq} masqué${nbMasq > 1 ? "s" : ""}` : "";
+    html += `<div class="region groupe-src${off ? " coupee" : ""}"><label class="coche"><input type="checkbox" data-cat-pref="${c.cle}"${off ? "" : " checked"}>
+      <strong>${c.ic} ${echapper(c.nom)}</strong> <span class="nb">· ${sites.length} site${sites.length > 1 ? "s" : ""}${etatCat ? " · " + etatCat : ""}</span></label>
+      <details class="sites-cat" data-cat="${c.cle}"${q || ouverts.has(c.cle) ? " open" : ""}><summary>${off ? "Voir les sites" : "Choisir les sites"}</summary><div class="deps">${vis.map(([d, x]) =>
+        `<div class="site-src"><label class="coche"><input type="checkbox" data-site-pref="${echapper(d)}"${off || sm.has(d) ? "" : " checked"}${off ? " disabled" : ""}>
+          <span>${echapper(x.nom)}${normaliser(x.nom) !== normaliser(d) ? ` <span class="nb">${echapper(d)}</span>` : ""}</span></label>${etat.admin && etat.sites.has(d)
+          ? `<select data-classer="${echapper(d)}" aria-label="Catégorie de ${echapper(x.nom)}">${c.cle === "nonclasse" ? '<option value="" disabled selected>⏳ À classer</option>' : ""}${CATEGORIES_SITES.filter((k) => k.cle !== "nonclasse").map((k) =>
+            `<option value="${k.cle}"${k.cle === x.categorie ? " selected" : ""}>${k.ic} ${echapper(k.nom)}</option>`).join("")}</select>` : ""}</div>`).join("")}</div></details></div>`;
+  }
+  const haut = zone.scrollTop;
+  zone.innerHTML = html || `<p class="note">${tous.size ? "Aucun résultat." : "Aucune source connue pour le moment."}</p>`;
+  zone.scrollTop = haut;
+  $("resume-sources").textContent = cm.size || sm.size
+    ? [cm.size ? `${cm.size} catégorie${cm.size > 1 ? "s" : ""} masquée${cm.size > 1 ? "s" : ""}` : "", sm.size ? `${sm.size} site${sm.size > 1 ? "s" : ""} masqué${sm.size > 1 ? "s" : ""}` : ""].filter(Boolean).join(" et ") + "."
+    : "Toutes les sources sont affichées.";
+}
+$("filtre-sources").addEventListener("input", rendreSourcesReglages);
+$("liste-sources").addEventListener("change", async (e) => {
+  const cat = e.target.closest("[data-cat-pref]"), site = e.target.closest("[data-site-pref]"), cl = e.target.closest("[data-classer]");
+  if (cat || site) {
+    const champ = cat ? "categories_masquees" : "sources_masquees", val = cat ? cat.dataset.catPref : site.dataset.sitePref;
+    const l = new Set(etat.prefs[champ] || []);
+    if (e.target.checked) l.delete(val); else l.add(val);
+    etat.prefs[champ] = [...l];
+    etat.choixSources = null; // le réglage enregistré remplace un choix temporaire
+    sauverPrefs(champ); rendreSourcesReglages(); majBoutonSources();
+    return;
+  }
+  if (cl && etat.admin) {
+    const d = cl.dataset.classer, categorie = cl.value;
+    cl.disabled = true;
+    try {
+      const { error } = await sb.rpc("admin_classer_site", { p_domaine: d, p_categorie: categorie });
+      if (error) { toast(erreurRpc(error)); rendreSourcesReglages(); return; }
+      const x = etat.sites.get(d); if (x) x.categorie = categorie;
+      etat.prefsModif = true;
+      toast(`« ${x?.nom ?? d} » classé dans « ${CATEGORIES_SITES.find((k) => k.cle === categorie)?.nom ?? categorie} ».`);
+      rendreSourcesReglages();
+    } catch (err) { toast("Classement impossible (connexion ?)"); rendreSourcesReglages(); }
+  }
 });
 
 $("b-lus").onclick = () => { etat.prefs.masquer_lus = !etat.prefs.masquer_lus; majBascules(); sauverPrefs("masquer_lus"); majListes(); };
@@ -2611,7 +2750,7 @@ let cacheChoix = null;
 function viderCacheChoix() { cacheChoix = null; }
 function donneesChoix() {
   if (!cacheChoix) cacheChoix = { choix: etat.choixThemes || choixEnregistre(), noms: new Set(etat.principaux.map((t) => normaliser(t.nom))),
-    sources: etat.choixSources || new Set(etat.prefs.sources_masquees || []) };
+    sources: etatSources() };
   return cacheChoix;
 }
 const cleThemeArticle = (a) => {
@@ -2635,7 +2774,7 @@ const etiquettesArticle = (a) => {
 function sansMasques(tab) {
   viderCacheChoix();
   const c = choixActif(), sm = donneesChoix().sources;
-  return tab.filter((a) => !sm.has(siteArticle(a).cle) && (c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id))));
+  return tab.filter((a) => !siteMasque(siteArticle(a).cle, sm) && (c.princ.has(cleThemeArticle(a)) || etiquettesArticle(a).some((t) => c.perso.has(t.id))));
 }
 const dansMesThemes = (a) => { const c = choixActif(); return etiquettesArticle(a).some((t) => c.perso.has(t.id)); };
 function rendrePrincipaux(p = "") {
@@ -2684,7 +2823,7 @@ const TUTO = [
     <div class="filtres tuto-ex tuto-filtres" aria-hidden="true"><span class="ex-filtre actif">Tous · 37 ▾</span><span class="ex-filtre">📍 Ma zone · 2</span><span class="ex-filtre">📌 Mes thèmes · 4</span><span class="ex-filtre">🔖 Gardés · 3</span></div>
     <ul><li><b>Tous ▾</b> : un second appui déroule la liste des thèmes, généraux et personnels. Cochez ceux à afficher, puis touchez <b>Afficher</b> (jusqu'à la fermeture de Vigie) ou <b>Enregistrer</b> (choix conservé sur votre compte).</li>
     <li><b>📍 Ma zone</b>, <b>📌 Mes thèmes</b> et <b>🔖 Gardés</b> ne montrent que les articles correspondants.</li></ul>
-    <p>En haut de l'écran, <b>Masquer lus</b> et <b>Masquer 👎</b> allègent la liste, et <b>Sources ▾</b> permet de choisir les sites affichés, selon le même principe.</p>` },
+    <p>En haut de l'écran, <b>Masquer lus</b> et <b>Masquer 👎</b> allègent la liste, et <b>Sources ▾</b> permet de choisir les sites affichés, rangés par catégorie. Pour un réglage durable (par exemple masquer toute la presse étrangère), passez par <b>Paramètres › Mes sources</b>.</p>` },
   { icone: "⚙️", titre: "Personnaliser votre veille", texte: `<ul><li><b>Zone géographique</b> : les articles concernant vos départements sont signalés 📍 et présentés en priorité.</li>
     <li><b>Thèmes principaux</b> : sujets communs à tous les lecteurs ; il suffit de décocher ceux que vous ne souhaitez pas suivre.</li>
     <li><b>Thèmes personnels</b> : sujets que vous ajoutez vous-même. Chaque nuit, les articles qui en parlent sont repérés 📌 pour vous seul. Leur nombre est limité (5 par défaut) ; au-delà, une demande motivée peut être adressée à l'administrateur, qui consulte alors vos thèmes pour décider.</li></ul>
@@ -2812,12 +2951,14 @@ function entrerDepuisBienvenue() {
 $("b-entrer").onclick = entrerDepuisBienvenue;
 function ouvrirReglages() {
   if (etat.reglages || !etat.prefsChargees) return;
+  if (etat.sourcesOuvertes) fermerPanneauSources();
   placerBlocPerso(false);
   etat.reglages = true; etat.prefsModif = false;
   $("msg-theme").textContent = ""; $("filtre-zone").value = "";
   $("nouveau-theme").value = ""; fermerProches();
   $("suggestions").innerHTML = '<p class="note">Chargement…</p>';
   rendrePrincipaux(""); rendreThemes(); rendreZone(""); chargerSuggestions(); chargerQuota();
+  $("filtre-sources").value = ""; $("liste-sources").innerHTML = ""; rendreSourcesReglages();
   afficherVueAdmin(false);
   $("btn-admin").classList.toggle("cache", !etat.admin);
   rendreAlertesAdmin(); majAlertesAdmin(); fermerSections("#vue-reglages");
