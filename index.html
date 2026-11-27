@@ -279,7 +279,8 @@
   .choix-themes .coche { padding: 6px 0; font-size: .9rem; }
   .choix-themes .coche .nb { color: var(--doux); font-size: .8rem; }
   .choix-themes .actions-choix { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 10px; }
-  .choix-themes .actions-choix .espace { flex: 1; }
+  .choix-themes .actions-choix.valider { flex-wrap: nowrap; }
+  .choix-themes .actions-choix.valider button { flex: 1; max-width: 220px; text-align: center; }
   .filtres .choix-themes .actions-choix button.principal { background: var(--accent); color: #fff; border-color: var(--accent); }
   .choix-themes .note { margin: 8px 0 0; font-size: .8rem; }
   /* ---------- Limite de thèmes et demandes ---------- */
@@ -1578,17 +1579,24 @@ function rendreAccueil() {
   rendreListe();
 }
 
+// Nombre de sujets affichés pour un ensemble d'articles, après masquage des lus et des 👎 (hors recherche, rien n'est masqué)
+function nbAffiches(tab) {
+  const cherche = clausesRecherche().length > 0;
+  const r = regrouper(etat.prefs.masquer_rejetes && !cherche ? tab.filter((a) => etat.votes.get(a.id)?.avis !== -1) : tab);
+  return r.liste.filter((p) => !(etat.prefs.masquer_lus && !cherche && lus.has(p.id))).length;
+}
 function rendreListe() {
   viderCacheChoix();
   // Filtres : Tous ▾ (choix des thèmes affichés), Gardés, Ma zone, Mes thèmes
-  const nbZone = zoneDeps.size ? regrouper(etat.articles.filter(dansZone)).liste.length : 0;
-  const nbPerso = regrouper(etat.articles.filter(dansMesThemes)).liste.length;
+  // Compteurs : ce qui sera réellement affiché (articles lus et 👎 masqués selon les réglages du lecteur)
+  const nbZone = zoneDeps.size ? nbAffiches(etat.articles.filter(dansZone)) : 0;
+  const nbPerso = nbAffiches(etat.articles.filter(dansMesThemes));
   if (!zoneDeps.size) etat.zoneSeule = false;
   if (!etat.perso.length) etat.persoSeul = false;
   if (!etat.gardes.size) etat.gardesSeuls = false;
   const tous = !etat.zoneSeule && !etat.gardesSeuls && !etat.persoSeul;
   $("filtres").innerHTML = `<button data-tous="1" class="depli-tous" aria-pressed="${tous}" aria-expanded="${etat.themesOuverts}" aria-controls="filtres-plus"
-      title="Choisir les thèmes affichés">Tous · ${regrouper(etat.articles).liste.length} <span aria-hidden="true">${etat.themesOuverts ? "▴" : "▾"}</span></button>` +
+      title="Choisir les thèmes affichés">Tous · ${nbAffiches(etat.articles)} <span aria-hidden="true">${etat.themesOuverts ? "▴" : "▾"}</span></button>` +
     (zoneDeps.size ? `<button data-zone="1" aria-pressed="${etat.zoneSeule}">📍 Ma zone · ${nbZone}</button>` : "") +
     (etat.perso.length ? `<button data-perso="1" aria-pressed="${etat.persoSeul}">📌 Mes thèmes · ${nbPerso}</button>` : "") +
     (etat.gardes.size ? `<button data-gardes="1" aria-pressed="${etat.gardesSeuls}">🔖 Gardés · ${etat.gardes.size}</button>` : "") +
@@ -1610,7 +1618,9 @@ function rendreListe() {
         <h3>${surligner(a.titre)}</h3>
         ${n ? `<div class="meta autres">+${n} autre${n > 1 ? "s" : ""} article${n > 1 ? "s" : ""}</div>` : ""}
       </div></button>`;
-  }).join("") : `<div class="chargement">${etat.gardesSeuls ? "Aucun article gardé ne correspond." : etat.articles.length ? "Aucun article ne correspond à vos filtres." : "Aucun article pour cette période."}</div>`;
+  }).join("") : `<div class="chargement">${etat.gardesSeuls ? "Aucun article gardé ne correspond." : etat.articles.length
+    ? `Aucun article ne correspond à vos filtres.${etat.masques ? ` ${etat.masques} article${etat.masques > 1 ? "s" : ""} déjà lu${etat.masques > 1 ? "s" : ""} ou 👎 ${etat.masques > 1 ? "sont masqués" : "est masqué"} : touchez « Masquer lus » ou « Masquer 👎 » pour ${etat.masques > 1 ? "les" : "le"} revoir.` : ""}`
+    : "Aucun article pour cette période."}</div>`;
   rendreBandeau(liste.length);
 }
 // Panneau « Tous ▾ » : thèmes généraux et thèmes perso du lecteur, à cocher. Les cases modifient un brouillon,
@@ -1630,8 +1640,8 @@ function panneauThemes() {
   return `<div class="plus choix-themes" id="filtres-plus" role="group" aria-label="Thèmes affichés">
     <p class="titre-choix">Thèmes généraux</p><div class="cases">${lignesP}</div>
     ${perso.length ? `<p class="titre-choix">Mes thèmes personnels</p><div class="cases">${lignesT}</div>` : ""}
-    <div class="actions-choix"><button type="button" data-choix="tout">Tout cocher</button><button type="button" data-choix="rien">Tout décocher</button>
-      <span class="espace"></span><button type="button" data-choix="afficher">Afficher</button>
+    <div class="actions-choix"><button type="button" data-choix="tout">Tout cocher</button><button type="button" data-choix="rien">Tout décocher</button></div>
+    <div class="actions-choix valider"><button type="button" data-choix="afficher">Afficher</button>
       <button type="button" data-choix="enregistrer" class="principal">Enregistrer</button></div>
     <p class="note">« Afficher » vaut jusqu'à la fermeture de Vigie. « Enregistrer » garde ce choix sur votre compte (« Autre » y reste toujours affiché). Un article d'un thème décoché reste visible s'il concerne l'un de vos thèmes personnels cochés.</p>
   </div>`;
