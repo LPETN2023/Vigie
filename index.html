@@ -565,6 +565,15 @@
   #tuto .tuto-filtres .ex-filtre { border: 1px solid var(--filet); border-radius: 999px; padding: 4px 10px; font-size: .78rem; font-weight: 600; background: var(--surface); color: var(--texte); white-space: nowrap; }
   #tuto .tuto-filtres .ex-filtre.actif { background: var(--texte); color: var(--fond); border-color: var(--texte); }
   #bienvenue .carte { width: 100%; max-width: 560px; background: var(--surface); padding: 28px 22px; border-radius: 20px; box-shadow: var(--ombre); }
+  /* Accueil : la page ne défile pas, seules les listes à cocher défilent (boutons toujours visibles) */
+  #bienvenue { height: 100%; height: 100dvh; min-height: 0; overflow: hidden; grid-template-rows: minmax(0, 1fr); }
+  #bienvenue .carte { max-height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  #bienvenue .carte > * { flex-shrink: 0; }
+  #bienvenue #b-zone, #bienvenue #b-themes, #bienvenue #b-perso { flex: 1 1 auto; flex-shrink: 1; min-height: 0; display: flex; flex-direction: column; }
+  #bienvenue #b-zone > *, #bienvenue #b-themes > *, #bienvenue #b-perso > * { flex-shrink: 0; }
+  #bienvenue #b-liste-zone, #bienvenue #b-liste-principaux, #bienvenue #b-perso-zone { flex: 1 1 auto; flex-shrink: 1; min-height: 80px; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+  #bienvenue #b-liste-principaux { align-content: start; border: 1px solid var(--filet); border-radius: 12px; padding: 4px 12px; margin-top: 8px; }
+  @media (max-height: 640px) { #bienvenue { padding: 8px; } #bienvenue .carte { padding: 18px 16px; } }
   #bienvenue h3 { margin: 6px 0 2px; font-size: 1.15rem; }
   #bienvenue .etape { margin: 0; color: var(--doux); font-size: .82rem; }
   #bienvenue .actions { display: flex; gap: 8px; margin-top: 18px; }
@@ -787,7 +796,7 @@
     <h4>Ajouter une source</h4>
     <form class="form-source" id="form-ajout-source" autocomplete="off">
       <input id="aj-nom" maxlength="120" placeholder="Nom de la source" aria-label="Nom de la source" required>
-      <input id="aj-url" type="url" maxlength="2000" placeholder="Adresse du flux RSS (https://…)" aria-label="Adresse du flux RSS" required>
+      <input id="aj-url" type="text" inputmode="url" autocapitalize="off" spellcheck="false" maxlength="2000" placeholder="Adresse du flux RSS (ex. : site.fr/rss)" aria-label="Adresse du flux RSS" required>
       <div class="ligne-sel"><select id="aj-dossier" aria-label="Dossier"></select><select id="aj-langue" aria-label="Langue"></select></div>
       <input id="aj-raison" maxlength="300" placeholder="Note (facultatif)" aria-label="Note (facultatif)">
       <button class="btn principal" type="submit">Ajouter la source</button>
@@ -861,7 +870,7 @@
   <p class="note">Un site ou un flux RSS manque à la veille ? Proposez-le : l'administrateur l'examinera et vous verrez sa réponse ici. Trois propositions en attente au plus.</p>
   <form class="form-source" id="form-suggestion" autocomplete="off">
     <input id="sug-nom" maxlength="120" placeholder="Nom du site (ex. : Le Journal du Hacker)" aria-label="Nom du site" required>
-    <input id="sug-url" type="url" maxlength="2000" placeholder="Adresse du site ou de son flux RSS (https://…)" aria-label="Adresse du site ou de son flux RSS" required>
+    <input id="sug-url" type="text" inputmode="url" autocapitalize="off" spellcheck="false" maxlength="2000" placeholder="Adresse du site ou de son flux RSS (ex. : google.fr)" aria-label="Adresse du site ou de son flux RSS" required>
     <textarea id="sug-motif" rows="2" maxlength="500" placeholder="Pourquoi cette source ? (facultatif)" aria-label="Motif (facultatif)"></textarea>
     <button class="btn principal" type="submit">Envoyer la proposition</button>
   </form>
@@ -2889,7 +2898,7 @@ const TUTO = [
   { icone: "🔎", titre: "Rechercher et conserver", texte: `<p>La <b>loupe</b> ${icone("loupe")} ouvre la recherche. Chaque mot validé par la touche Entrée devient un filtre ; plusieurs filtres permettent d'affiner le résultat :</p>
     <div class="bandeau tuto-ex"><div class="ligne"><span class="titre">Filtres</span><span class="puce"><span>🔎 « fuite »</span></span><span class="op">et</span><span class="puce"><span>🔎 « hôpital »</span></span></div>
       <div class="bas"><span>3 articles sur 37</span></div></div>
-    <p>Un appui sur « et » élargit la recherche en « ou ». Il est également possible de saisir directement « rançongiciel ou ransomware ».</p>
+    <p>Un appui sur « et » change la recherche en « ou ». Il est également possible de saisir directement « rançongiciel ou ransomware ».</p>
     <p>Le signet <b>🔖</b> conserve un article, que l'on retrouve ensuite dans le filtre « Gardés ».</p>` },
   { icone: "🗂️", titre: "Trier l'affichage", texte: `<p>Sous l'essentiel du jour, une rangée de filtres permet de choisir les articles affichés :</p>
     <div class="filtres tuto-ex tuto-filtres" aria-hidden="true"><span class="ex-filtre actif">Tous · 37 ▾</span><span class="ex-filtre">📍 Ma zone · 2</span><span class="ex-filtre">📌 Mes thèmes · 4</span><span class="ex-filtre">🔖 Gardés · 3</span></div>
@@ -2958,6 +2967,22 @@ function fermerTuto() {
 $("tuto-suiv").onclick = () => { if (etapeTuto < TUTO.length - 1) { etapeTuto++; majTuto(); } else fermerTuto(); };
 $("tuto-prec").onclick = () => { if (etapeTuto > 0) { etapeTuto--; majTuto(); } };
 $("tuto-passer").onclick = fermerTuto;
+// Balayage horizontal : vers la gauche = page suivante, vers la droite = page précédente
+(() => {
+  let x0 = null, y0 = 0;
+  $("tuto").addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  $("tuto").addEventListener("touchend", (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // geste trop court ou vertical (défilement)
+    if (dx < 0 && etapeTuto < TUTO.length - 1) { etapeTuto++; majTuto(); }
+    else if (dx > 0 && etapeTuto > 0) { etapeTuto--; majTuto(); }
+  }, { passive: true });
+})();
 $("btn-revoir-tuto").onclick = () => { fermerReglages(); setTimeout(() => ouvrirTuto(), 200); };
 
 // Le bloc « Mes thèmes personnels » des Paramètres sert aussi à l'étape 3 de l'accueil : on le déplace (mêmes éléments, mêmes actions)
@@ -3337,13 +3362,18 @@ async function chargerMesSuggestions() {
       ${x.statut === "attente" ? `<span class="pastilles"><button type="button" data-annuler-sug="${Number(x.id)}">Retirer ma proposition</button></span>` : ""}</li>`;
   }).join("") : '<li class="note">Aucune proposition pour le moment.</li>';
 }
+// « google.fr » ou « www.site.fr/rss » suffisent : https:// est ajouté s'il manque
+function completerUrl(v) {
+  const x = String(v || "").trim();
+  return !x || /^https?:\/\//i.test(x) ? x : "https://" + x.replace(/^\/+/, "");
+}
 $("form-suggestion").onsubmit = async (e) => {
   e.preventDefault();
   const b = e.submitter, uid = sessionCourante;
   if (b) b.disabled = true;
   $("msg-suggestion").textContent = "";
   try {
-    const { error } = await sb.rpc("suggerer_source", { p_nom: $("sug-nom").value, p_url: $("sug-url").value.trim(), p_motif: $("sug-motif").value });
+    const { error } = await sb.rpc("suggerer_source", { p_nom: $("sug-nom").value, p_url: completerUrl($("sug-url").value), p_motif: $("sug-motif").value });
     if (uid !== sessionCourante) return;
     if (error) { $("msg-suggestion").textContent = erreurRpc(error); return; }
     $("sug-nom").value = ""; $("sug-url").value = ""; $("sug-motif").value = "";
@@ -3429,7 +3459,7 @@ $("form-ajout-source").onsubmit = async (e) => {
   if (b) b.disabled = true;
   $("ajout-msg").textContent = "";
   try {
-    const { error } = await sb.rpc("admin_ajouter_source", { p_nom: $("aj-nom").value.trim(), p_url: $("aj-url").value.trim(),
+    const { error } = await sb.rpc("admin_ajouter_source", { p_nom: $("aj-nom").value.trim(), p_url: completerUrl($("aj-url").value),
       p_dossier: $("aj-dossier").value, p_langue: $("aj-langue").value, p_raison: $("aj-raison").value.trim() || null });
     if (uid !== sessionCourante) return;
     if (error) { $("ajout-msg").textContent = erreurRpc(error); return; }
